@@ -58,7 +58,7 @@ function EditTaskBody({ taskId, onClose }: { taskId: string; onClose: () => void
   }
 
   return (
-    <div className="max-h-[80vh] overflow-y-auto">
+    <div>
       <h3 className="font-display text-[16px] font-semibold mb-3">Edit step</h3>
 
       <input
@@ -182,22 +182,40 @@ function EditTaskBody({ taskId, onClose }: { taskId: string; onClose: () => void
       </div>
 
       <div className="mb-4">
-        <label className="flex items-center gap-2 text-[11px] text-text-faint mb-1.5 cursor-pointer">
-          <input type="checkbox" checked={tracking} onChange={(e) => setTracking(e.target.checked)} className="accent-amber flex-shrink-0" />
-          Track a running number instead of just done/not-done
-        </label>
+        <div className="text-[11px] text-text-faint mb-1.5">type</div>
+        <div className="flex gap-1.5 mb-2">
+          <button
+            type="button"
+            onClick={() => setTracking(false)}
+            className={`text-[11.5px] rounded-md px-2.5 py-1 border ${
+              !tracking ? "bg-amber-dim border-amber text-amber" : "bg-bg-2 border-border text-text-dim"
+            }`}
+          >
+            ✓ Simple
+          </button>
+          <button
+            type="button"
+            onClick={() => setTracking(true)}
+            className={`text-[11.5px] rounded-md px-2.5 py-1 border ${
+              tracking ? "bg-amber-dim border-amber text-amber" : "bg-bg-2 border-border text-text-dim"
+            }`}
+          >
+            # Numeric
+          </button>
+        </div>
         {tracking && (
-          <div className="flex gap-2">
+          <div className="flex items-center gap-2">
+            <span className="text-[11.5px] text-text-faint flex-shrink-0">Goal:</span>
             <input
               type="number"
-              placeholder="Target"
+              placeholder="4000"
               value={trackTarget}
               onChange={(e) => setTrackTarget(e.target.value)}
-              className="flex-1 min-w-0 bg-bg-2 border border-border rounded-md px-2.5 py-1.5 text-[12.5px] text-text-dim"
+              className="w-20 min-w-0 flex-shrink-0 bg-bg-2 border border-border rounded-md px-2.5 py-1.5 text-[12.5px] text-text-dim"
             />
             <input
               type="text"
-              placeholder="Unit"
+              placeholder="unit (kcal)"
               value={trackUnit}
               onChange={(e) => setTrackUnit(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && save()}

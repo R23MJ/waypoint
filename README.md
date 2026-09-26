@@ -244,3 +244,27 @@ set `min-width: 0`. Two inputs side-by-side in a narrow sheet would refuse to
 shrink, overflow the sheet's own padding, and get clipped right at the
 screen edge. Added `min-w-0` to every paired-input row across
 `AddTaskForm.tsx` and `EditTaskSheet.tsx`.
+
+## Tracking UI redesigned to match habit-app convention
+
+Researched how TickTick, Streaks, and Loop Habit Tracker handle this: every
+one of them uses a clear **type picker** ("Boolean vs Real" in TickTick's own
+terms) at task/habit creation, never a checkbox with a long explanatory
+sentence. Replaced the "Track a running number instead of..." checkbox with
+a two-button type selector — **Simple / Numeric** — styled like the existing
+priority buttons, and reframed the fields as "Goal: [amount] [unit]"
+(TickTick's own wording) instead of separate Target/Unit boxes. Same change
+in both `AddTaskForm.tsx` and `EditTaskSheet.tsx`.
+
+## Edit-sheet glow clipping — actual root cause found
+
+The `min-w-0` fix in the previous round was real but didn't fully explain
+why it persisted specifically on the **edit** sheet. The actual cause:
+`EditTaskSheet.tsx`'s content div had its own `max-h-[80vh] overflow-y-auto`
+*nested inside* `Sheet.tsx`'s own `overflow-y-auto` wrapper (added for the
+keyboard fix). That inner div has no padding of its own, so it clips ink
+overflow (focus rings, box-shadows) right at the input's edge — zero buffer,
+unlike the outer wrapper which has real `p-5` padding. Removed the redundant
+inner scroll container; `Sheet.tsx` already handles scrolling for every
+sheet. Checked the other three sheet-based components (`QuickAddSheet`,
+`WaitingPrompt`, `ConfirmDialog`) — none of them had this duplicate wrapper.
