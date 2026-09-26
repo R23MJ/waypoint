@@ -1,7 +1,44 @@
-import { Project, Task } from "./types";
+import { Project, RecurrenceRule, Task } from "./types";
 
 export function todayISO(): string {
   return new Date().toISOString().slice(0, 10);
+}
+
+export function isOverdue(task: Task): boolean {
+  if (task.done || !task.dueDate) return false;
+  return task.dueDate < todayISO();
+}
+
+export function isDueToday(task: Task): boolean {
+  if (task.done || !task.dueDate) return false;
+  return task.dueDate === todayISO();
+}
+
+const PRIORITY_RANK: Record<Task["priority"], number> = { high: 0, normal: 1, low: 2 };
+
+export function sortByPriorityThenOrder(tasks: Task[]): Task[] {
+  return [...tasks].sort((a, b) => {
+    const p = PRIORITY_RANK[a.priority] - PRIORITY_RANK[b.priority];
+    if (p !== 0) return p;
+    return a.order - b.order;
+  });
+}
+
+/** Given a rule and the date an occurrence was anchored to (its due date,
+ * or today if it had none), compute the next occurrence's due date. */
+export function nextOccurrenceDate(rule: RecurrenceRule, fromISODate: string): string {
+  const d = new Date(fromISODate + "T00:00:00");
+  if (rule.freq === "daily") d.setDate(d.getDate() + rule.interval);
+  else if (rule.freq === "weekly") d.setDate(d.getDate() + rule.interval * 7);
+  else if (rule.freq === "monthly") d.setMonth(d.getMonth() + rule.interval);
+  return d.toISOString().slice(0, 10);
+}
+
+export function describeRecurrence(rule: RecurrenceRule): string {
+  const n = rule.interval;
+  const unit = { daily: "day", weekly: "week", monthly: "month" }[rule.freq];
+  if (n === 1) return `every ${unit}`;
+  return `every ${n} ${unit}s`;
 }
 
 export function isDeferred(task: Task): boolean {

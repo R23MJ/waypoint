@@ -11,6 +11,8 @@ export default function SettingsPage() {
   const deleteContext = useAppStore((s) => s.deleteContext);
   const importData = useAppStore((s) => s.importData);
   const clearAll = useAppStore((s) => s.clearAll);
+  const notificationsEnabled = useAppStore((s) => s.notificationsEnabled);
+  const setNotificationsEnabled = useAppStore((s) => s.setNotificationsEnabled);
 
   const [newCtxName, setNewCtxName] = useState("");
   const [newCtxIcon, setNewCtxIcon] = useState("\ud83d\udccc");
@@ -107,6 +109,39 @@ export default function SettingsPage() {
             Add
           </button>
         </div>
+      </section>
+
+      <section className="mb-9">
+        <h2 className="text-[13px] font-semibold text-text-faint tracking-wide mb-1">DUE-DATE REMINDERS</h2>
+        <p className="text-[12.5px] text-text-faint mb-3">
+          When enabled, opening the app checks for anything due today or overdue and shows one notification —
+          at most once a day. This only fires while a tab is open (or the installed app is launched); it&apos;s not a
+          background push, since that would need a server.
+        </p>
+        <label className="flex items-center gap-2.5 text-[13.5px]">
+          <input
+            type="checkbox"
+            checked={notificationsEnabled}
+            onChange={async (e) => {
+              const on = e.target.checked;
+              if (on && typeof window !== "undefined" && "Notification" in window) {
+                const perm = await Notification.requestPermission();
+                setNotificationsEnabled(perm === "granted");
+              } else {
+                setNotificationsEnabled(false);
+              }
+            }}
+          />
+          Notify me about due tasks when I open the app
+        </label>
+        {notificationsEnabled === false &&
+          typeof window !== "undefined" &&
+          "Notification" in window &&
+          Notification.permission === "denied" && (
+            <p className="text-[12px] text-rust mt-2">
+              Notifications are blocked for this site in your browser settings — enable them there first.
+            </p>
+          )}
       </section>
 
       <section className="mb-9">

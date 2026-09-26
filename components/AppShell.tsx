@@ -1,9 +1,12 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Compass, Inbox, FolderKanban, Clock, RefreshCw, Settings } from "lucide-react";
+import { Compass, Inbox, FolderKanban, Clock, RefreshCw, Settings, Search } from "lucide-react";
 import { useAppStore } from "@/lib/store";
+import SearchOverlay from "@/components/SearchOverlay";
+import NotificationChecker from "@/components/NotificationChecker";
 
 const NAV = [
   { href: "/", label: "Next Actions", icon: Compass },
@@ -16,14 +19,27 @@ const NAV = [
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const inboxCount = useAppStore((s) => s.inbox.length);
+  const [searchOpen, setSearchOpen] = useState(false);
 
   return (
     <div className="flex h-dvh w-full">
+      <NotificationChecker />
+      {searchOpen && <SearchOverlay onClose={() => setSearchOpen(false)} />}
+
       {/* Desktop sidebar */}
       <aside className="hidden md:flex md:w-64 md:flex-shrink-0 flex-col border-r border-border-soft bg-bg-2 h-full">
-        <div className="flex items-center gap-2 px-5 pt-6 pb-5 border-b border-border-soft">
-          <span className="w-2.5 h-2.5 rounded-[3px] bg-amber rotate-45 flex-shrink-0" />
-          <span className="font-display font-bold text-[17px]">Waypoint</span>
+        <div className="flex items-center justify-between gap-2 px-5 pt-6 pb-5 border-b border-border-soft">
+          <div className="flex items-center gap-2">
+            <span className="w-2.5 h-2.5 rounded-[3px] bg-amber rotate-45 flex-shrink-0" />
+            <span className="font-display font-bold text-[17px]">Waypoint</span>
+          </div>
+          <button
+            onClick={() => setSearchOpen(true)}
+            className="text-text-faint hover:text-text p-1 rounded-md hover:bg-surface"
+            title="Search"
+          >
+            <Search size={16} />
+          </button>
         </div>
         <nav className="flex-1 px-3 py-3 flex flex-col gap-1">
           {NAV.map((item) => {
@@ -71,9 +87,14 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             <span className="w-2 h-2 rounded-[2px] bg-amber rotate-45 flex-shrink-0" />
             <span className="font-display font-bold text-[15px]">Waypoint</span>
           </div>
-          <Link href="/settings" className="text-text-faint p-1.5">
-            <Settings size={19} />
-          </Link>
+          <div className="flex items-center gap-1">
+            <button onClick={() => setSearchOpen(true)} className="text-text-faint p-1.5">
+              <Search size={19} />
+            </button>
+            <Link href="/settings" className="text-text-faint p-1.5">
+              <Settings size={19} />
+            </Link>
+          </div>
         </header>
 
         <main className="flex-1 min-h-0 overflow-y-auto">{children}</main>

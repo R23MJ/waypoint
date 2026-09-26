@@ -3,12 +3,16 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import { newId } from "./id";
+import { nextOccurrenceDate, todayISO } from "./gtd";
 import {
   AppState,
+  ChecklistItem,
   Context,
   InboxItem,
+  Priority,
   Project,
   ProjectStatus,
+  RecurrenceRule,
   ResourceType,
   SomedayIdea,
   Task,
@@ -30,6 +34,8 @@ const initialState: AppState = {
   inbox: [],
   somedayIdeas: [],
   lastReviewedAt: null,
+  notificationsEnabled: false,
+  lastNotifiedDate: null,
 };
 
 // No-op storage so the persist middleware never touches `localStorage`
@@ -39,6 +45,31 @@ const noopStorage = {
   setItem: () => {},
   removeItem: () => {},
 };
+
+/** Fills in fields added after a person may already have data saved, so an
+ * older backup or an already-hydrated browser never crashes on a missing
+ * field. */
+function withTaskDefaults(t: Partial<Task> & { id: string }): Task {
+  return {
+    id: t.id,
+    projectId: t.projectId ?? null,
+    title: t.title ?? "",
+    notes: t.notes ?? "",
+    done: t.done ?? false,
+    completedAt: t.completedAt ?? null,
+    dependsOn: t.dependsOn ?? [],
+    contextIds: t.contextIds ?? [],
+    waitingOn: t.waitingOn ?? null,
+    waitingSince: t.waitingSince ?? null,
+    deferUntil: t.deferUntil ?? null,
+    dueDate: t.dueDate ?? null,
+    priority: t.priority ?? "normal",
+    recurrence: t.recurrence ?? null,
+    checklist: t.checklist ?? [],
+    order: t.order ?? 0,
+    createdAt: t.createdAt ?? Date.now(),
+  };
+}
 
 interface Store extends AppState {
   hasHydrated: boolean;
@@ -51,13 +82,22 @@ interface Store extends AppState {
   addTask: (
     projectId: string | null,
     title: string,
-    opts?: Partial<Pick<Task, "dependsOn" | "contextIds" | "deferUntil" | "notes">>
+    opts?: Partial<
+      Pick<
+        Task,
+        "dependsOn" | "contextIds" | "deferUntil" | "notes" | "dueDate" | "priority" | "recurrence"
+      >
+    >
   ) => string;
   updateTask: (id: string, patch: Partial<Task>) => void;
   toggleTask: (id: string) => void;
   deleteTask: (id: string) => void;
   setWaiting: (id: string, waitingOn: string | null) => void;
   reorderTask: (id: string, direction: "up" | "down") => void;
+
+  addChecklistItem: (taskId: string, text: string) => void;
+  toggleChecklistItem: (taskId: string, itemId: string) => void;
+  deleteChecklistItem: (taskId: string, itemId: string) => void;
 
   addResource: (data: {
     projectId: string | null;
@@ -80,6 +120,9 @@ interface Store extends AppState {
   deleteSomedayIdea: (id: string) => void;
 
   markReviewed: () => void;
+
+  setNotificationsEnabled: (v: boolean) => void;
+  markNotified: (date: string) => void;
 
   importData: (data: AppState) => void;
   clearAll: () => void;
@@ -120,21 +163,20 @@ export const useAppStore = create<Store>()(
         const id = newId();
         const siblings = get().tasks.filter((t) => t.projectId === projectId);
         const maxOrder = siblings.reduce((m, t) => Math.max(m, t.order), 0);
-        const task: Task = {
+        const task: Task = withTaskDefaults({
           id,
           projectId,
           title: title.trim(),
           notes: opts?.notes ?? "",
-          done: false,
-          completedAt: null,
           dependsOn: opts?.dependsOn ?? [],
           contextIds: opts?.contextIds ?? [],
-          waitingOn: null,
-          waitingSince: null,
           deferUntil: opts?.deferUntil ?? null,
+          dueDate: opts?.dueDate ?? null,
+          priority: opts?.priority ?? "normal",
+          recurrence: opts?.recurrence ?? null,
           order: maxOrder + 1,
           createdAt: Date.now(),
-        };
+        });
         set((s) => ({ tasks: [...s.tasks, task] }));
         return id;
       },
@@ -142,19 +184,48 @@ export const useAppStore = create<Store>()(
         set((s) => ({
           tasks: s.tasks.map((t) => (t.id === id ? { ...t, ...patch } : t)),
         })),
-      toggleTask: (id) =>
+      toggleTask: (id) => {
+        const task = get().tasks.find((t) => t.id === id);
+        if (!task) return;
+        const completing = !task.done;
+
+        // Completing a recurring task spawns its next occurrence instead of
+        // just disappearing — that's the whole point of "recurring".
+        if (completing && task.recurrence) {
+          const anchor = task.dueDate ?? todayISO();
+          const nextDue = nextOccurrenceDate(task.recurrence, anchor);
+          const next: Task = withTaskDefaults({
+            ...task,
+            id: newId(),
+            done: false,
+            completedAt: null,
+            waitingOn: null,
+            waitingSince: null,
+            dueDate: nextDue,
+            checklist: task.checklist.map((c) => ({ ...c, done: false })),
+            createdAt: Date.now(),
+          });
+          set((s) => ({
+            tasks: s.tasks.map((t) =>
+              t.id === id ? { ...t, done: true, completedAt: Date.now() } : t
+            ).concat(next),
+          }));
+          return;
+        }
+
         set((s) => ({
           tasks: s.tasks.map((t) =>
             t.id === id
               ? {
                   ...t,
-                  done: !t.done,
-                  completedAt: !t.done ? Date.now() : null,
-                  waitingOn: !t.done ? null : t.waitingOn,
+                  done: completing,
+                  completedAt: completing ? Date.now() : null,
+                  waitingOn: completing ? null : t.waitingOn,
                 }
               : t
           ),
-        })),
+        }));
+      },
       deleteTask: (id) =>
         set((s) => ({
           tasks: s.tasks
@@ -200,6 +271,37 @@ export const useAppStore = create<Store>()(
             }),
           };
         }),
+
+      addChecklistItem: (taskId, text) => {
+        if (!text.trim()) return;
+        const item: ChecklistItem = { id: newId(), text: text.trim(), done: false };
+        set((s) => ({
+          tasks: s.tasks.map((t) =>
+            t.id === taskId ? { ...t, checklist: [...t.checklist, item] } : t
+          ),
+        }));
+      },
+      toggleChecklistItem: (taskId, itemId) =>
+        set((s) => ({
+          tasks: s.tasks.map((t) =>
+            t.id === taskId
+              ? {
+                  ...t,
+                  checklist: t.checklist.map((c) =>
+                    c.id === itemId ? { ...c, done: !c.done } : c
+                  ),
+                }
+              : t
+          ),
+        })),
+      deleteChecklistItem: (taskId, itemId) =>
+        set((s) => ({
+          tasks: s.tasks.map((t) =>
+            t.id === taskId
+              ? { ...t, checklist: t.checklist.filter((c) => c.id !== itemId) }
+              : t
+          ),
+        })),
 
       addResource: (data) =>
         set((s) => ({
@@ -255,20 +357,26 @@ export const useAppStore = create<Store>()(
 
       markReviewed: () => set({ lastReviewedAt: Date.now() }),
 
+      setNotificationsEnabled: (v) => set({ notificationsEnabled: v }),
+      markNotified: (date) => set({ lastNotifiedDate: date }),
+
       importData: (data) =>
         set({
           projects: data.projects ?? [],
-          tasks: data.tasks ?? [],
+          tasks: (data.tasks ?? []).map(withTaskDefaults),
           resources: data.resources ?? [],
           contexts: data.contexts?.length ? data.contexts : DEFAULT_CONTEXTS,
           inbox: data.inbox ?? [],
           somedayIdeas: data.somedayIdeas ?? [],
           lastReviewedAt: data.lastReviewedAt ?? null,
+          notificationsEnabled: data.notificationsEnabled ?? false,
+          lastNotifiedDate: data.lastNotifiedDate ?? null,
         }),
       clearAll: () => set({ ...initialState }),
     }),
     {
       name: "gtd-app-storage",
+      version: 2,
       storage: createJSONStorage(() =>
         typeof window !== "undefined" ? window.localStorage : noopStorage
       ),
@@ -281,7 +389,20 @@ export const useAppStore = create<Store>()(
         inbox: s.inbox,
         somedayIdeas: s.somedayIdeas,
         lastReviewedAt: s.lastReviewedAt,
+        notificationsEnabled: s.notificationsEnabled,
+        lastNotifiedDate: s.lastNotifiedDate,
       }),
+      migrate: (persisted) => {
+        const p = persisted as AppState;
+        return {
+          ...p,
+          tasks: (p.tasks ?? []).map(withTaskDefaults),
+          notificationsEnabled: p.notificationsEnabled ?? false,
+          lastNotifiedDate: p.lastNotifiedDate ?? null,
+        };
+      },
     }
   )
 );
+
+export type { Priority, RecurrenceRule };

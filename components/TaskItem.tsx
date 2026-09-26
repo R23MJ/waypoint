@@ -1,8 +1,10 @@
 "use client";
 
+import { useState } from "react";
 import { Task, Context } from "@/lib/types";
-import { isBlockedBy, isWaiting, isDeferred, daysSince } from "@/lib/gtd";
-import { Check, X, Clock } from "lucide-react";
+import { isBlockedBy, isWaiting, isDeferred, isOverdue, isDueToday, daysSince, describeRecurrence } from "@/lib/gtd";
+import { useAppStore } from "@/lib/store";
+import { Check, X, Clock, Repeat, Flag, ChevronDown, ChevronRight, Plus } from "lucide-react";
 
 export default function TaskItem({
   task,
@@ -23,17 +25,33 @@ export default function TaskItem({
   onSetWaiting?: () => void;
   children?: React.ReactNode;
 }) {
+  const addChecklistItem = useAppStore((s) => s.addChecklistItem);
+  const toggleChecklistItem = useAppStore((s) => s.toggleChecklistItem);
+  const deleteChecklistItem = useAppStore((s) => s.deleteChecklistItem);
+
+  const [checklistOpen, setChecklistOpen] = useState(false);
+  const [newItemText, setNewItemText] = useState("");
+
   const blockedBy = isBlockedBy(task, allTasks);
   const blocked = blockedBy.length > 0 && !task.done;
   const waiting = isWaiting(task);
   const deferred = isDeferred(task) && !task.done && !waiting;
+  const overdue = isOverdue(task);
+  const dueToday = isDueToday(task);
   const taskContexts = contexts.filter((c) => task.contextIds.includes(c.id));
+  const checklistDone = task.checklist.filter((c) => c.done).length;
+
+  function submitChecklistItem() {
+    if (!newItemText.trim()) return;
+    addChecklistItem(task.id, newItemText);
+    setNewItemText("");
+  }
 
   return (
     <div
-      className={`bg-surface border border-border-soft rounded-[9px] px-3.5 py-3 mb-2 ${
-        task.done || blocked || waiting || deferred ? "opacity-70" : ""
-      }`}
+      className={`bg-surface border rounded-[9px] px-3.5 py-3 mb-2 ${
+        task.priority === "high" && !task.done ? "border-rust/50" : "border-border-soft"
+      } ${task.done || blocked || waiting || deferred ? "opacity-70" : ""}`}
     >
       <div className="flex items-start gap-2.5">
         <button
@@ -49,21 +67,46 @@ export default function TaskItem({
           {projectLabel && (
             <div className="text-[11px] text-text-faint mb-0.5">{projectLabel}</div>
           )}
-          <div className={`text-[14.5px] ${task.done ? "line-through text-text-faint" : ""}`}>
-            {task.title}
-          </div>
-          {taskContexts.length > 0 && (
-            <div className="flex flex-wrap gap-1 mt-1.5">
-              {taskContexts.map((c) => (
-                <span
-                  key={c.id}
-                  className="text-[10.5px] bg-surface-2 border border-border-soft rounded-md px-1.5 py-0.5 text-text-dim"
-                >
-                  {c.icon} {c.name}
-                </span>
-              ))}
+          <div className="flex items-start gap-1.5">
+            {task.priority === "high" && !task.done && (
+              <Flag size={12} className="text-rust flex-shrink-0 mt-1" fill="currentColor" />
+            )}
+            {task.priority === "low" && !task.done && (
+              <Flag size={12} className="text-slate flex-shrink-0 mt-1" />
+            )}
+            <div className={`text-[14.5px] ${task.done ? "line-through text-text-faint" : ""}`}>
+              {task.title}
             </div>
-          )}
+            {task.recurrence && (
+              <span className="flex-shrink-0 mt-1" title={describeRecurrence(task.recurrence)}>
+                <Repeat size={12} className="text-text-faint" />
+              </span>
+            )}
+          </div>
+
+          <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+            {taskContexts.map((c) => (
+              <span
+                key={c.id}
+                className="text-[10.5px] bg-surface-2 border border-border-soft rounded-md px-1.5 py-0.5 text-text-dim"
+              >
+                {c.icon} {c.name}
+              </span>
+            ))}
+            {task.dueDate && !task.done && (
+              <span
+                className={`text-[10.5px] rounded-md px-1.5 py-0.5 border ${
+                  overdue
+                    ? "bg-rust/15 border-rust/40 text-rust"
+                    : dueToday
+                    ? "bg-amber-dim border-amber text-amber"
+                    : "bg-surface-2 border-border-soft text-text-faint"
+                }`}
+              >
+                {overdue ? "overdue" : dueToday ? "due today" : `due ${task.dueDate}`}
+              </span>
+            )}
+          </div>
         </div>
         <div className="flex gap-1 flex-shrink-0">
           {onSetWaiting && !task.done && (
@@ -97,6 +140,66 @@ export default function TaskItem({
           deferred until <b>{task.deferUntil}</b>
         </div>
       )}
+
+      {/* Checklist */}
+      <div className="ml-[26px] mt-2">
+        {(task.checklist.length > 0 || checklistOpen) && (
+          <button
+            onClick={() => setChecklistOpen((v) => !v)}
+            className="flex items-center gap-1 text-[11px] text-text-faint hover:text-text-dim mb-1"
+          >
+            {checklistOpen ? <ChevronDown size={11} /> : <ChevronRight size={11} />}
+            checklist {task.checklist.length > 0 && `(${checklistDone}/${task.checklist.length})`}
+          </button>
+        )}
+        {checklistOpen && (
+          <div className="flex flex-col gap-1 mb-1.5">
+            {task.checklist.map((item) => (
+              <div key={item.id} className="flex items-center gap-2 group">
+                <button
+                  onClick={() => toggleChecklistItem(task.id, item.id)}
+                  className={`w-[14px] h-[14px] rounded-[4px] border flex-shrink-0 flex items-center justify-center ${
+                    item.done ? "bg-sage border-sage" : "border-slate"
+                  }`}
+                >
+                  {item.done && <Check size={9} color="#21262c" strokeWidth={3} />}
+                </button>
+                <span className={`text-[12.5px] flex-1 ${item.done ? "line-through text-text-faint" : "text-text-dim"}`}>
+                  {item.text}
+                </span>
+                <button
+                  onClick={() => deleteChecklistItem(task.id, item.id)}
+                  className="text-text-faint hover:text-rust opacity-0 group-hover:opacity-100"
+                >
+                  <X size={11} />
+                </button>
+              </div>
+            ))}
+            <div className="flex items-center gap-1.5 mt-0.5">
+              <input
+                type="text"
+                value={newItemText}
+                onChange={(e) => setNewItemText(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && submitChecklistItem()}
+                placeholder="Add checklist item"
+                className="flex-1 bg-bg-2 border border-border rounded-md px-2 py-1 text-[12px]"
+              />
+              <button onClick={submitChecklistItem} className="text-text-faint hover:text-amber">
+                <Plus size={14} />
+              </button>
+            </div>
+          </div>
+        )}
+        {!checklistOpen && task.checklist.length === 0 && (
+          <button
+            onClick={() => setChecklistOpen(true)}
+            className="text-[11px] text-text-faint hover:text-amber"
+          >
+            + checklist
+          </button>
+        )}
+      </div>
+
       {children}
     </div>
   );

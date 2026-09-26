@@ -9,6 +9,21 @@ export interface Project {
   createdAt: number;
 }
 
+export type Priority = "low" | "normal" | "high";
+
+export type RecurrenceFreq = "daily" | "weekly" | "monthly";
+
+export interface RecurrenceRule {
+  freq: RecurrenceFreq;
+  interval: number; // every N days/weeks/months
+}
+
+export interface ChecklistItem {
+  id: string;
+  text: string;
+  done: boolean;
+}
+
 export interface Task {
   id: string;
   projectId: string | null; // null = standalone next action, not part of a project
@@ -21,6 +36,10 @@ export interface Task {
   waitingOn: string | null; // set = "waiting for" someone/something external; not a dependency
   waitingSince: number | null;
   deferUntil: string | null; // ISO date; not "available" until this date passes
+  dueDate: string | null; // ISO date; this needs to happen by this date
+  priority: Priority;
+  recurrence: RecurrenceRule | null; // when done, spawns the next occurrence
+  checklist: ChecklistItem[]; // lightweight sub-items, not full dependency steps
   order: number;
   createdAt: number;
 }
@@ -64,4 +83,6 @@ export interface AppState {
   inbox: InboxItem[];
   somedayIdeas: SomedayIdea[];
   lastReviewedAt: number | null;
+  notificationsEnabled: boolean;
+  lastNotifiedDate: string | null; // ISO date, so we notify at most once/day
 }

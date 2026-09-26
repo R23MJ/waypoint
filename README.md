@@ -31,6 +31,31 @@ exactly that:
 - **Resources** (links, notes, videos, book passages, articles) attach to a
   project or to one specific step, so everything you need lives with the work.
 
+## What's new since the first cut
+
+Added after a pass through what GTD/task-app reviews and forums call out as
+standard-but-missing:
+
+- **Due dates + best-effort reminders.** Separate from "don't show until"
+  (`deferUntil`). Overdue/due-today badges everywhere a step appears.
+  Settings → Due-Date Reminders can turn on one browser notification per day
+  when the app is opened and something's due — this is not a background push
+  (that needs a server), so it only fires while the tab/app is actually open.
+- **Recurring steps.** Daily/weekly/monthly, every N. Completing one spawns
+  the next occurrence automatically rather than just vanishing.
+- **Checklists.** A lightweight sub-list inside a step, for things you want
+  to track without promoting each one to a full dependency-tracked step.
+- **Priority** (low/normal/high). High-priority steps sort first in every
+  Next Actions list and get a flagged/red-tinted border.
+- **Search** (magnifying glass in the header) across projects, steps, and
+  resources at once.
+- **Installable as a PWA.** Manifest + icons + a small offline-caching
+  service worker, so "Add to Home Screen" on Android gives it a real icon and
+  it opens like an app, not a browser tab.
+
+A localStorage migration (`store.ts`, `version: 2`) backfills the new task
+fields for anyone who already has data saved from before this round.
+
 ## Stack
 
 - Next.js 16 (App Router) + TypeScript

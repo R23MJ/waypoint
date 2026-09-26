@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useAppStore } from "@/lib/store";
-import { isAvailable, tasksForProject } from "@/lib/gtd";
+import { isAvailable, tasksForProject, sortByPriorityThenOrder } from "@/lib/gtd";
 import TaskItem from "@/components/TaskItem";
 import AddTaskForm from "@/components/AddTaskForm";
 import ConfirmDialog from "@/components/ConfirmDialog";
@@ -33,15 +33,15 @@ export default function NextActionsPage() {
     return activeProjects
       .map((p) => {
         const projTasks = tasksForProject(tasks, p.id);
-        const available = filterByContext(projTasks.filter((t) => isAvailable(t, tasks)));
+        const available = sortByPriorityThenOrder(filterByContext(projTasks.filter((t) => isAvailable(t, tasks))));
         return { project: p, available, hasAnyOpen: projTasks.some((t) => !t.done) };
       })
       .filter((g) => g.hasAnyOpen);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeProjects, tasks, activeContext]);
 
-  const standaloneAvailable = filterByContext(
-    tasks.filter((t) => t.projectId === null && isAvailable(t, tasks))
+  const standaloneAvailable = sortByPriorityThenOrder(
+    filterByContext(tasks.filter((t) => t.projectId === null && isAvailable(t, tasks)))
   );
   const standaloneTasks = tasks.filter((t) => t.projectId === null);
 

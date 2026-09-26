@@ -8,6 +8,7 @@ import {
   isAvailable,
   isBlocked,
   isWaiting,
+  sortByPriorityThenOrder,
 } from "@/lib/gtd";
 import { ProjectStatus } from "@/lib/types";
 import TaskItem from "@/components/TaskItem";
@@ -54,7 +55,7 @@ export default function ProjectDetailPage() {
   const projectId = project.id;
   const projTasks = tasksForProject(tasks, project.id);
   const openTasks = projTasks.filter((t) => !t.done);
-  const next = openTasks.filter((t) => isAvailable(t, tasks));
+  const next = sortByPriorityThenOrder(openTasks.filter((t) => isAvailable(t, tasks)));
   const blocked = openTasks.filter((t) => !isWaiting(t) && isBlocked(t, tasks));
   const waiting = openTasks.filter((t) => isWaiting(t));
   const done = projTasks.filter((t) => t.done);
