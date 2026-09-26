@@ -2,7 +2,8 @@
 
 import { useRef, useState } from "react";
 import { useAppStore } from "@/lib/store";
-import { X } from "lucide-react";
+import { useThemeStore, ThemeMode } from "@/lib/theme-store";
+import { X, Sun, Moon, Monitor } from "lucide-react";
 import ConfirmDialog from "@/components/ConfirmDialog";
 
 export default function SettingsPage() {
@@ -13,6 +14,8 @@ export default function SettingsPage() {
   const clearAll = useAppStore((s) => s.clearAll);
   const notificationsEnabled = useAppStore((s) => s.notificationsEnabled);
   const setNotificationsEnabled = useAppStore((s) => s.setNotificationsEnabled);
+  const themeMode = useThemeStore((s) => s.mode);
+  const setThemeMode = useThemeStore((s) => s.setMode);
 
   const [newCtxName, setNewCtxName] = useState("");
   const [newCtxIcon, setNewCtxIcon] = useState("\ud83d\udccc");
@@ -54,20 +57,42 @@ export default function SettingsPage() {
     reader.readAsText(file);
   }
 
-  return (
-    <div className="max-w-[680px] mx-auto px-5 md:px-8 py-7 pb-24 md:pb-16">
-      <h1 className="font-display text-[24px] font-bold mb-6">Settings</h1>
+  const THEME_OPTIONS: { mode: ThemeMode; label: string; icon: typeof Sun }[] = [
+    { mode: "light", label: "Light", icon: Sun },
+    { mode: "dark", label: "Dark", icon: Moon },
+    { mode: "system", label: "System", icon: Monitor },
+  ];
 
-      <section className="mb-9">
-        <h2 className="text-[13px] font-semibold text-text-faint tracking-wide mb-1">CONTEXTS</h2>
-        <p className="text-[12.5px] text-text-faint mb-3">
-          Tag steps with where or what you need to do them — filter Next Actions down to just what fits right now.
-        </p>
-        <div className="flex flex-wrap gap-1.5 mb-3">
+  return (
+    <div className="max-w-[640px] mx-auto px-5 md:px-8 py-8 pb-28 md:pb-16">
+      <h1 className="font-display text-[26px] font-bold mb-8 tracking-[-0.01em]">Settings</h1>
+
+      <SettingsSection title="Appearance" description="How Waypoint looks on this device.">
+        <div className="inline-flex bg-surface-2 rounded-xl p-1 gap-1">
+          {THEME_OPTIONS.map(({ mode, label, icon: Icon }) => (
+            <button
+              key={mode}
+              onClick={() => setThemeMode(mode)}
+              className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-[13px] font-medium transition-colors ${
+                themeMode === mode ? "bg-surface text-text shadow-sm" : "text-text-faint hover:text-text-dim"
+              }`}
+            >
+              <Icon size={14} />
+              {label}
+            </button>
+          ))}
+        </div>
+      </SettingsSection>
+
+      <SettingsSection
+        title="Contexts"
+        description="Tag steps with where or what you need to do them — filter Next Actions down to just what fits right now."
+      >
+        <div className="flex flex-wrap gap-1.5 mb-3.5">
           {contexts.map((c) => (
             <span
               key={c.id}
-              className="inline-flex items-center gap-1.5 text-[12.5px] bg-surface border border-border-soft rounded-md px-2.5 py-1.5"
+              className="inline-flex items-center gap-1.5 text-[12.5px] bg-surface border border-border-soft rounded-lg px-2.5 py-1.5"
             >
               {c.icon} {c.name}
               <button onClick={() => deleteContext(c.id)} className="text-text-faint hover:text-rust">
@@ -81,7 +106,7 @@ export default function SettingsPage() {
             type="text"
             value={newCtxIcon}
             onChange={(e) => setNewCtxIcon(e.target.value)}
-            className="w-14 bg-surface border border-border-soft rounded-md px-2 py-2 text-[14px] text-center"
+            className="w-12 bg-bg-2 border border-border rounded-xl px-2 py-2 text-[14px] text-center"
             maxLength={2}
           />
           <input
@@ -95,7 +120,7 @@ export default function SettingsPage() {
                 setNewCtxName("");
               }
             }}
-            className="flex-1 bg-surface border border-border-soft rounded-md px-3 py-2 text-[13.5px]"
+            className="flex-1 bg-bg-2 border border-border rounded-xl px-3 py-2 text-[13.5px]"
           />
           <button
             onClick={() => {
@@ -104,21 +129,18 @@ export default function SettingsPage() {
                 setNewCtxName("");
               }
             }}
-            className="px-3.5 py-2 rounded-md text-[13px] font-semibold bg-amber text-[#2a2117]"
+            className="px-4 py-2 rounded-xl text-[13px] font-semibold bg-amber text-[#241d12] active:scale-[0.97] transition-transform"
           >
             Add
           </button>
         </div>
-      </section>
+      </SettingsSection>
 
-      <section className="mb-9">
-        <h2 className="text-[13px] font-semibold text-text-faint tracking-wide mb-1">DUE-DATE REMINDERS</h2>
-        <p className="text-[12.5px] text-text-faint mb-3">
-          When enabled, opening the app checks for anything due today or overdue and shows one notification —
-          at most once a day. This only fires while a tab is open (or the installed app is launched); it&apos;s not a
-          background push, since that would need a server.
-        </p>
-        <label className="flex items-center gap-2.5 text-[13.5px]">
+      <SettingsSection
+        title="Due-date reminders"
+        description="When enabled, opening the app checks for anything due today or overdue and shows one notification a day. This only fires while a tab or the installed app is open — it's not a background push, since that needs a server."
+      >
+        <label className="flex items-center gap-2.5 text-[13.5px] cursor-pointer">
           <input
             type="checkbox"
             checked={notificationsEnabled}
@@ -131,6 +153,7 @@ export default function SettingsPage() {
                 setNotificationsEnabled(false);
               }
             }}
+            className="w-4 h-4 accent-amber"
           />
           Notify me about due tasks when I open the app
         </label>
@@ -138,25 +161,26 @@ export default function SettingsPage() {
           typeof window !== "undefined" &&
           "Notification" in window &&
           Notification.permission === "denied" && (
-            <p className="text-[12px] text-rust mt-2">
+            <p className="text-[12px] text-rust mt-2.5">
               Notifications are blocked for this site in your browser settings — enable them there first.
             </p>
           )}
-      </section>
+      </SettingsSection>
 
-      <section className="mb-9">
-        <h2 className="text-[13px] font-semibold text-text-faint tracking-wide mb-1">YOUR DATA</h2>
-        <p className="text-[12.5px] text-text-faint mb-3">
-          Everything lives only in this browser — there&apos;s no account and nothing is sent anywhere. Export a backup
-          regularly, and especially before clearing your browser data or switching devices.
-        </p>
+      <SettingsSection
+        title="Your data"
+        description="Everything lives only in this browser — no account, nothing sent anywhere. Export a backup regularly, and especially before clearing browser data or switching devices."
+      >
         <div className="flex flex-wrap gap-2 mb-2">
-          <button onClick={exportData} className="px-3.5 py-2 rounded-md text-[13px] font-semibold bg-surface-2 border border-border">
+          <button
+            onClick={exportData}
+            className="px-4 py-2 rounded-xl text-[13px] font-semibold bg-surface-2 border border-border-soft hover:border-border transition-colors"
+          >
             Export backup (.json)
           </button>
           <button
             onClick={() => fileInputRef.current?.click()}
-            className="px-3.5 py-2 rounded-md text-[13px] font-semibold bg-surface-2 border border-border"
+            className="px-4 py-2 rounded-xl text-[13px] font-semibold bg-surface-2 border border-border-soft hover:border-border transition-colors"
           >
             Import backup
           </button>
@@ -173,20 +197,16 @@ export default function SettingsPage() {
           />
         </div>
         {importError && <p className="text-[12.5px] text-rust mb-2">{importError}</p>}
-      </section>
+      </SettingsSection>
 
-      <section>
-        <h2 className="text-[13px] font-semibold text-text-faint tracking-wide mb-1">DANGER ZONE</h2>
-        <p className="text-[12.5px] text-text-faint mb-3">
-          Permanently erase every project, step, and resource on this browser.
-        </p>
+      <SettingsSection title="Danger zone" description="Permanently erase every project, step, and resource on this browser.">
         <button
           onClick={() => setConfirmClear(true)}
-          className="px-3.5 py-2 rounded-md text-[13px] font-semibold text-rust border border-rust/40"
+          className="px-4 py-2 rounded-xl text-[13px] font-semibold text-rust border border-rust/30 hover:bg-rust/10 transition-colors"
         >
           Clear all data
         </button>
-      </section>
+      </SettingsSection>
 
       <ConfirmDialog
         open={confirmClear}
@@ -199,5 +219,23 @@ export default function SettingsPage() {
         onCancel={() => setConfirmClear(false)}
       />
     </div>
+  );
+}
+
+function SettingsSection({
+  title,
+  description,
+  children,
+}: {
+  title: string;
+  description: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="mb-8 pb-8 border-b border-border-soft last:border-b-0">
+      <h2 className="text-[14.5px] font-semibold mb-1">{title}</h2>
+      <p className="text-[12.5px] text-text-faint mb-3.5 leading-relaxed max-w-[52ch]">{description}</p>
+      {children}
+    </section>
   );
 }

@@ -28,9 +28,9 @@ export default function InboxPage() {
   }
 
   return (
-    <div className="max-w-[680px] mx-auto px-5 md:px-8 py-7 pb-24 md:pb-16">
-      <h1 className="font-display text-[24px] font-bold mb-1">Inbox</h1>
-      <p className="text-text-dim text-[14px] mb-5">
+    <div className="max-w-[680px] mx-auto px-5 md:px-8 py-8 pb-28 md:pb-16">
+      <h1 className="font-display text-[24px] font-bold mb-1.5 tracking-[-0.01em]">Inbox</h1>
+      <p className="text-text-dim text-[14px] mb-6">
         Dump anything here the moment it crosses your mind. Sort it out later — that&apos;s the point.
       </p>
 
@@ -41,11 +41,11 @@ export default function InboxPage() {
           onChange={(e) => setCapture(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && submitCapture()}
           placeholder="Capture a thought…"
-          className="flex-1 bg-surface border border-border-soft rounded-lg px-3.5 py-2.5 text-[14px]"
+          className="flex-1 bg-surface border border-border-soft rounded-xl px-3.5 py-2.5 text-[14px] focus:outline-none focus:border-border transition-colors"
         />
         <button
           onClick={submitCapture}
-          className="px-4 py-2.5 rounded-lg text-[13.5px] font-semibold bg-amber text-[#2a2117]"
+          className="px-4 py-2.5 rounded-xl text-[13.5px] font-semibold bg-amber text-[#241d12] active:scale-[0.97] transition-transform"
         >
           Capture
         </button>
@@ -59,7 +59,7 @@ export default function InboxPage() {
       ) : (
         <div className="flex flex-col gap-2">
           {inbox.map((item) => (
-            <div key={item.id} className="bg-surface border border-border-soft rounded-[9px] px-3.5 py-3">
+            <div key={item.id} className="bg-surface border border-border-soft rounded-2xl px-4 py-3.5 transition-colors hover:border-border">
               <div className="flex items-start gap-2">
                 <div className="flex-1 min-w-0">
                   <div className="text-[14px]">{item.text}</div>
@@ -89,7 +89,7 @@ export default function InboxPage() {
               ) : (
                 <button
                   onClick={() => setOpenId(item.id)}
-                  className="mt-2 text-[12px] font-semibold text-amber"
+                  className="mt-2 text-[12px] font-semibold text-amber hover:opacity-80 transition-opacity"
                 >
                   Process →
                 </button>
@@ -139,8 +139,8 @@ function ProcessPanel({
           <button
             key={o.key}
             onClick={() => setDest(o.key)}
-            className={`text-[12px] rounded-md px-2.5 py-1.5 border ${
-              dest === o.key ? "bg-amber-dim border-amber text-amber" : "bg-bg-2 border-border text-text-dim"
+            className={`text-[12px] rounded-lg px-2.5 py-1.5 border transition-colors ${
+              dest === o.key ? "bg-amber-dim border-amber text-amber" : "bg-bg-2 border-border text-text-dim hover:border-text-faint"
             }`}
           >
             {o.label}
@@ -154,7 +154,7 @@ function ProcessPanel({
           <select
             value={projectId}
             onChange={(e) => setProjectId(e.target.value)}
-            className="w-full bg-bg-2 border border-border rounded-md px-2.5 py-2 text-[13px] mb-2.5"
+            className="w-full bg-bg-2 border border-border rounded-xl px-2.5 py-2 text-[13px] mb-2.5"
           >
             <option value="">Standalone action</option>
             {projects.map((p) => (
@@ -168,7 +168,7 @@ function ProcessPanel({
               addTask(projectId || null, text);
               onDone();
             }}
-            className="px-3.5 py-1.5 rounded-md text-[13px] font-semibold bg-amber text-[#2a2117]"
+            className="px-4 py-2 rounded-xl text-[13px] font-semibold bg-amber text-[#241d12] active:scale-[0.97] transition-transform"
           >
             Save as next action
           </button>
@@ -181,7 +181,7 @@ function ProcessPanel({
           <select
             value={newProjectStatus}
             onChange={(e) => setNewProjectStatus(e.target.value as ProjectStatus)}
-            className="w-full bg-bg-2 border border-border rounded-md px-2.5 py-2 text-[13px] mb-2.5"
+            className="w-full bg-bg-2 border border-border rounded-xl px-2.5 py-2 text-[13px] mb-2.5"
           >
             <option value="active">Active</option>
             <option value="scheduled">Scheduled</option>
@@ -192,7 +192,7 @@ function ProcessPanel({
               addProject(text, newProjectStatus);
               onDone();
             }}
-            className="px-3.5 py-1.5 rounded-md text-[13px] font-semibold bg-amber text-[#2a2117]"
+            className="px-4 py-2 rounded-xl text-[13px] font-semibold bg-amber text-[#241d12] active:scale-[0.97] transition-transform"
           >
             Create project &quot;{text}&quot;
           </button>
@@ -205,7 +205,7 @@ function ProcessPanel({
             addSomedayIdea(text);
             onDone();
           }}
-          className="px-3.5 py-1.5 rounded-md text-[13px] font-semibold bg-amber text-[#2a2117]"
+          className="px-4 py-2 rounded-xl text-[13px] font-semibold bg-amber text-[#241d12] active:scale-[0.97] transition-transform"
         >
           Save to Someday / Maybe
         </button>
@@ -217,13 +217,13 @@ function ProcessPanel({
             addResource({ projectId: null, taskId: null, type: "note", title: text, content: "" });
             onDone();
           }}
-          className="px-3.5 py-1.5 rounded-md text-[13px] font-semibold bg-amber text-[#2a2117]"
+          className="px-4 py-2 rounded-xl text-[13px] font-semibold bg-amber text-[#241d12] active:scale-[0.97] transition-transform"
         >
           Save as reference note
         </button>
       )}
 
-      <button onClick={onCancel} className="ml-2 px-3.5 py-1.5 rounded-md text-[13px] font-semibold text-text-faint">
+      <button onClick={onCancel} className="ml-2 px-4 py-2 rounded-xl text-[13px] font-semibold text-text-faint">
         Cancel
       </button>
     </div>

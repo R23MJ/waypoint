@@ -21,8 +21,8 @@ export default function ReviewPage() {
   const allClear = inbox.length === 0 && stalled.length === 0 && staleWaiting.length === 0;
 
   return (
-    <div className="max-w-[680px] mx-auto px-5 md:px-8 py-7 pb-24 md:pb-16">
-      <h1 className="font-display text-[24px] font-bold mb-1">Weekly Review</h1>
+    <div className="max-w-[680px] mx-auto px-5 md:px-8 py-8 pb-28 md:pb-16">
+      <h1 className="font-display text-[24px] font-bold mb-1.5 tracking-[-0.01em]">Weekly Review</h1>
       <p className="text-text-dim text-[14px] mb-1">
         {lastReviewedAt
           ? `Last reviewed ${daysSince(lastReviewedAt)}d ago.`
@@ -37,7 +37,7 @@ export default function ReviewPage() {
       >
         <Link
           href="/inbox"
-          className="flex items-center justify-between bg-surface border border-border-soft rounded-lg px-4 py-3 hover:border-text-faint"
+          className="flex items-center justify-between bg-surface border border-border-soft rounded-xl px-4 py-3.5 hover:border-border transition-colors"
         >
           <span className="text-[14px]">{inbox.length} item{inbox.length === 1 ? "" : "s"} waiting to be sorted</span>
           <ChevronRight size={15} className="text-text-faint" />
@@ -54,7 +54,7 @@ export default function ReviewPage() {
           <Link
             key={p.id}
             href={`/projects/${p.id}`}
-            className="flex items-center justify-between bg-surface border border-border-soft rounded-lg px-4 py-3 mb-1.5 hover:border-text-faint"
+            className="flex items-center justify-between bg-surface border border-border-soft rounded-xl px-4 py-3 mb-1.5 hover:border-border transition-colors"
           >
             <span className="text-[14px]">{p.name}</span>
             <ChevronRight size={15} className="text-text-faint" />
@@ -71,7 +71,7 @@ export default function ReviewPage() {
         {staleWaiting.map((t) => {
           const project = projects.find((p) => p.id === t.projectId);
           return (
-            <div key={t.id} className="bg-surface border border-border-soft rounded-lg px-4 py-3 mb-1.5">
+            <div key={t.id} className="bg-surface border border-border-soft rounded-xl px-4 py-3 mb-1.5">
               <div className="text-[14px]">{t.title}</div>
               <div className="text-[11.5px] text-amber mt-1">
                 waiting on <b>{t.waitingOn}</b>{" "}
@@ -94,14 +94,14 @@ export default function ReviewPage() {
           <Link
             key={p.id}
             href={`/projects/${p.id}`}
-            className="flex items-center justify-between bg-surface border border-border-soft rounded-lg px-4 py-3 mb-1.5 hover:border-text-faint"
+            className="flex items-center justify-between bg-surface border border-border-soft rounded-xl px-4 py-3 mb-1.5 hover:border-border transition-colors"
           >
             <span className="text-[14px]">{p.name}</span>
             <ChevronRight size={15} className="text-text-faint" />
           </Link>
         ))}
         {oldSomedayIdeas.map((i) => (
-          <div key={i.id} className="bg-surface border border-border-soft rounded-lg px-4 py-3 mb-1.5 text-[14px]">
+          <div key={i.id} className="bg-surface border border-border-soft rounded-xl px-4 py-3 mb-1.5 text-[14px]">
             {i.text}
           </div>
         ))}
@@ -116,7 +116,7 @@ export default function ReviewPage() {
 
       <button
         onClick={markReviewed}
-        className="w-full py-3 rounded-lg text-[14px] font-semibold bg-amber text-[#2a2117] mt-4"
+        className="w-full py-3.5 rounded-xl text-[14px] font-semibold bg-amber text-[#241d12] mt-4 active:scale-[0.98] transition-transform"
       >
         Mark review complete
       </button>
@@ -139,7 +139,7 @@ function ReviewSection({
 }) {
   return (
     <div className="mb-7">
-      <h2 className="text-[13px] font-semibold text-text-faint tracking-wide mb-1">{title.toUpperCase()}</h2>
+      <h2 className="text-[14px] font-semibold mb-1">{title}</h2>
       {hint && !empty && <p className="text-[12px] text-text-faint mb-2.5">{hint}</p>}
       {empty ? <div className="text-[13px] text-text-faint italic py-1">{emptyText}</div> : children}
     </div>

@@ -54,7 +54,7 @@ export default function AddTaskForm({
   }
 
   return (
-    <div className="bg-surface border border-border-soft rounded-[9px] p-3 mt-1.5">
+    <div className="bg-surface border border-border-soft rounded-2xl p-3.5 mt-1.5">
       <input
         type="text"
         autoFocus={autoFocus}
@@ -62,7 +62,7 @@ export default function AddTaskForm({
         value={title}
         onChange={(e) => setTitle(e.target.value)}
         onKeyDown={(e) => e.key === "Enter" && submit()}
-        className="w-full bg-bg-2 border border-border rounded-md px-2.5 py-2 text-[13.5px] mb-2.5"
+        className="w-full bg-bg-2 border border-border rounded-xl px-3 py-2 text-[13.5px] mb-2.5 focus:outline-none focus:border-text-faint transition-colors"
       />
 
       <div className="mb-2.5">
@@ -179,10 +179,10 @@ export default function AddTaskForm({
       </div>
 
       <div className="flex gap-2">
-        <button onClick={submit} className="px-3.5 py-1.5 rounded-md text-[13px] font-semibold bg-amber text-[#2a2117]">
+        <button onClick={submit} className="px-4 py-2 rounded-xl text-[13px] font-semibold bg-amber text-[#241d12] active:scale-[0.97] transition-transform">
           Add step
         </button>
-        <button onClick={onCancel} className="px-3.5 py-1.5 rounded-md text-[13px] font-semibold text-text-faint">
+        <button onClick={onCancel} className="px-4 py-2 rounded-xl text-[13px] font-semibold text-text-faint">
           Cancel
         </button>
       </div>

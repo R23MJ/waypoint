@@ -36,16 +36,16 @@ export default function ProjectsPage() {
   const unfiledResources = resources.filter((r) => !r.projectId && !r.taskId);
 
   return (
-    <div className="max-w-[720px] mx-auto px-5 md:px-8 py-7 pb-24 md:pb-16">
-      <h1 className="font-display text-[24px] font-bold mb-5">Projects</h1>
+    <div className="max-w-[720px] mx-auto px-5 md:px-8 py-8 pb-28 md:pb-16">
+      <h1 className="font-display text-[24px] font-bold mb-6 tracking-[-0.01em]">Projects</h1>
 
-      <div className="flex gap-1.5 mb-5 border-b border-border-soft">
+      <div className="flex gap-1 mb-6 bg-surface-2 rounded-xl p-1 w-fit">
         {TABS.map((t) => (
           <button
             key={t.key}
             onClick={() => setTab(t.key)}
-            className={`text-[13px] px-3 py-2.5 -mb-px border-b-2 font-medium ${
-              tab === t.key ? "border-amber text-text" : "border-transparent text-text-faint"
+            className={`text-[12.5px] px-3.5 py-1.5 rounded-lg font-medium transition-colors ${
+              tab === t.key ? "bg-surface text-text shadow-sm" : "text-text-faint hover:text-text-dim"
             }`}
           >
             {t.label}
@@ -63,12 +63,12 @@ export default function ProjectsPage() {
               <Link
                 key={p.id}
                 href={`/projects/${p.id}`}
-                className="flex items-center justify-between bg-surface border border-border-soft rounded-lg px-4 py-3 hover:border-text-faint"
+                className="flex items-center justify-between bg-surface border border-border-soft rounded-xl px-4 py-3.5 hover:border-border transition-colors"
               >
                 <span className="text-[14px]">{p.name}</span>
                 <span className="flex items-center gap-2">
                   {ready > 0 && (
-                    <span className="text-[10.5px] text-amber bg-amber-dim rounded-full px-2 py-0.5">{ready} ready</span>
+                    <span className="text-[10.5px] text-amber bg-amber-dim rounded-full font-medium px-2 py-0.5">{ready} ready</span>
                   )}
                   <ChevronRight size={15} className="text-text-faint" />
                 </span>
@@ -79,7 +79,7 @@ export default function ProjectsPage() {
       )}
 
       {adding ? (
-        <div className="bg-surface border border-border-soft rounded-lg p-3 mb-6">
+        <div className="bg-surface border border-border-soft rounded-2xl p-3.5 mb-6">
           <input
             type="text"
             autoFocus
@@ -87,7 +87,7 @@ export default function ProjectsPage() {
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && newName.trim() && (addProject(newName, tab), setNewName(""), setAdding(false))}
-            className="w-full bg-bg-2 border border-border rounded-md px-2.5 py-2 text-[13.5px] mb-2.5"
+            className="w-full bg-bg-2 border border-border rounded-xl px-3 py-2 text-[13.5px] mb-2.5"
           />
           <div className="flex gap-2">
             <button
@@ -98,11 +98,11 @@ export default function ProjectsPage() {
                   setAdding(false);
                 }
               }}
-              className="px-3.5 py-1.5 rounded-md text-[13px] font-semibold bg-amber text-[#2a2117]"
+              className="px-3.5 py-1.5 rounded-lg text-[13px] font-semibold bg-amber text-[#241d12] active:scale-[0.97] transition-transform"
             >
               Create in {TABS.find((t) => t.key === tab)?.label}
             </button>
-            <button onClick={() => setAdding(false)} className="px-3.5 py-1.5 rounded-md text-[13px] font-semibold text-text-faint">
+            <button onClick={() => setAdding(false)} className="px-3.5 py-1.5 rounded-lg text-[13px] font-semibold text-text-faint">
               Cancel
             </button>
           </div>
@@ -110,7 +110,7 @@ export default function ProjectsPage() {
       ) : (
         <button
           onClick={() => setAdding(true)}
-          className="w-full text-left border border-dashed border-border rounded-lg px-4 py-2.5 text-[13.5px] text-text-faint hover:text-text-dim hover:border-text-faint mb-8"
+          className="w-full text-left border border-dashed border-border rounded-2xl px-4 py-3 text-[13.5px] text-text-faint hover:text-text-dim hover:border-text-faint mb-8 transition-colors"
         >
           + New project in {TABS.find((t) => t.key === tab)?.label}
         </button>
@@ -119,14 +119,14 @@ export default function ProjectsPage() {
       {tab === "someday" && (
         <>
           <div className="mt-4">
-            <h2 className="text-[13px] font-semibold text-text-faint tracking-wide mb-2">LOOSE IDEAS</h2>
-            <p className="text-[12.5px] text-text-faint mb-3">
+            <h2 className="text-[14px] font-semibold mb-1">Loose ideas</h2>
+            <p className="text-[12.5px] text-text-faint mb-3.5">
               Not even a project yet — just something worth not forgetting.
             </p>
             {somedayIdeas.length > 0 && (
               <div className="flex flex-col gap-1.5 mb-3">
                 {somedayIdeas.map((idea) => (
-                  <div key={idea.id} className="flex items-center justify-between bg-surface border border-border-soft rounded-lg px-3.5 py-2.5">
+                  <div key={idea.id} className="flex items-center justify-between bg-surface border border-border-soft rounded-xl px-3.5 py-2.5">
                     <span className="text-[13.5px]">{idea.text}</span>
                     <button onClick={() => setConfirmIdeaId(idea.id)} className="text-text-faint hover:text-rust">
                       <X size={14} />
@@ -142,7 +142,7 @@ export default function ProjectsPage() {
                 onChange={(e) => setIdeaText(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && ideaText.trim() && (addSomedayIdea(ideaText), setIdeaText(""))}
                 placeholder="Someday, maybe..."
-                className="flex-1 bg-surface border border-border-soft rounded-lg px-3.5 py-2 text-[13.5px]"
+                className="flex-1 bg-surface border border-border-soft rounded-xl px-3.5 py-2.5 text-[13.5px]"
               />
               <button
                 onClick={() => {
@@ -151,7 +151,7 @@ export default function ProjectsPage() {
                     setIdeaText("");
                   }
                 }}
-                className="px-3.5 py-2 rounded-lg text-[13px] font-semibold bg-amber text-[#2a2117]"
+                className="px-4 py-2.5 rounded-xl text-[13px] font-semibold bg-amber text-[#241d12] active:scale-[0.97] transition-transform"
               >
                 Add
               </button>
@@ -159,8 +159,8 @@ export default function ProjectsPage() {
           </div>
 
           <div className="mt-8">
-            <h2 className="text-[13px] font-semibold text-text-faint tracking-wide mb-2">REFERENCE</h2>
-            <p className="text-[12.5px] text-text-faint mb-3">Saved for later — not attached to any project.</p>
+            <h2 className="text-[14px] font-semibold mb-1">Reference</h2>
+            <p className="text-[12.5px] text-text-faint mb-3.5">Saved for later — not attached to any project.</p>
             <div className="flex flex-col gap-1.5 mb-3">
               {unfiledResources.map((r) => (
                 <ResourceCard key={r.id} resource={r} onDelete={() => deleteResource(r.id)} />
@@ -177,7 +177,7 @@ export default function ProjectsPage() {
             ) : (
               <button
                 onClick={() => setAddingRef(true)}
-                className="w-full text-left border border-dashed border-border rounded-lg px-4 py-2.5 text-[13.5px] text-text-faint hover:text-text-dim"
+                className="w-full text-left border border-dashed border-border rounded-2xl px-4 py-3 text-[13.5px] text-text-faint hover:text-text-dim transition-colors"
               >
                 + Save a reference link, article, or note
               </button>

@@ -4,6 +4,7 @@ import "./globals.css";
 import HydrationGate from "@/components/HydrationGate";
 import AppShell from "@/components/AppShell";
 import PwaRegister from "@/components/PwaRegister";
+import ThemeProvider from "@/components/ThemeProvider";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -32,7 +33,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#21262c",
+  themeColor: "#17191c",
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
@@ -42,7 +43,20 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" className={`${inter.variable} ${spaceGrotesk.variable}`}>
       <body className="font-sans antialiased bg-bg text-text min-h-dvh">
+        <script
+          // Runs before hydration so the correct theme paints immediately —
+          // no flash of the wrong theme on load.
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{
+              var raw = localStorage.getItem("waypoint-theme");
+              var mode = raw ? (JSON.parse(raw).state || {}).mode : "dark";
+              var light = mode === "light" || (mode === "system" && window.matchMedia("(prefers-color-scheme: light)").matches);
+              if (light) document.documentElement.setAttribute("data-theme", "light");
+            }catch(e){}})();`,
+          }}
+        />
         <PwaRegister />
+        <ThemeProvider />
         <HydrationGate>
           <AppShell>{children}</AppShell>
         </HydrationGate>

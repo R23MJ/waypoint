@@ -1,21 +1,61 @@
 @import "tailwindcss";
 
+/* ---------- Dark (default) ---------- */
 :root {
-  --bg: #21262c;
-  --bg-2: #262b32;
-  --surface: #2b3139;
-  --surface-2: #323942;
-  --border: #3c434d;
-  --border-soft: #333941;
-  --text: #ece8df;
-  --text-dim: #a7aeb8;
-  --text-faint: #757c86;
-  --amber: #dda43f;
-  --amber-dim: #7a5f2c;
-  --sage: #6d9a7f;
-  --sage-dim: #37473d;
-  --slate: #7f8792;
-  --rust: #c1694f;
+  --bg: #17191c;
+  --bg-2: #1c1f23;
+  --surface: #202327;
+  --surface-2: #262a2f;
+  --surface-hover: #2c3036;
+  --border: #34393f;
+  --border-soft: #292d33;
+  --text: #edeae2;
+  --text-dim: #a9afb8;
+  --text-faint: #6e7580;
+  --amber: #e3a947;
+  --amber-dim: #4a3a20;
+  --amber-tint: rgba(227, 169, 71, 0.13);
+  --sage: #74a483;
+  --sage-dim: #2c3a30;
+  --slate: #838b96;
+  --rust: #c96b52;
+  --rust-tint: rgba(201, 107, 82, 0.15);
+
+  --shadow-color: 0deg 0% 0%;
+  --shadow-sm: 0 1px 2px hsl(var(--shadow-color) / 0.3);
+  --shadow-md: 0 4px 16px -4px hsl(var(--shadow-color) / 0.4);
+  --shadow-lg: 0 12px 32px -8px hsl(var(--shadow-color) / 0.5);
+
+  color-scheme: dark;
+}
+
+/* ---------- Light ---------- */
+:root[data-theme="light"] {
+  --bg: #f5f5f7;
+  --bg-2: #ffffff;
+  --surface: #ffffff;
+  --surface-2: #f0f0f3;
+  --surface-hover: #e8e8ec;
+  --border: #e2e2e8;
+  --border-soft: #ebebf0;
+  --text: #1c1e21;
+  --text-dim: #5b6270;
+  --text-faint: #8b909a;
+  --amber: #a5731f;
+  --amber-dim: #fbedd3;
+  --amber-tint: rgba(165, 115, 31, 0.1);
+  --sage: #3f7350;
+  --sage-dim: #e2efe6;
+  --slate: #9199a3;
+  --rust: #ab472f;
+  --rust-tint: rgba(171, 71, 47, 0.1);
+
+  --shadow-color: 220deg 20% 45%;
+  --shadow-sm: 0 1px 2px hsl(var(--shadow-color) / 0.08);
+  --shadow-md: 0 4px 16px -4px hsl(var(--shadow-color) / 0.14);
+  --shadow-lg: 0 16px 40px -8px hsl(var(--shadow-color) / 0.18);
+
+  color-scheme: light;
 }
 
 @theme inline {
@@ -26,6 +66,7 @@
   --color-bg-2: var(--bg-2);
   --color-surface: var(--surface);
   --color-surface-2: var(--surface-2);
+  --color-surface-hover: var(--surface-hover);
   --color-border: var(--border);
   --color-border-soft: var(--border-soft);
   --color-text: var(--text);
@@ -49,8 +90,12 @@ body {
   color: var(--text);
 }
 
+* {
+  border-color: var(--border-soft);
+}
+
 ::selection {
-  background: var(--amber-dim);
+  background: var(--amber-tint);
   color: var(--text);
 }
 
@@ -67,6 +112,60 @@ body {
 }
 
 textarea,
-input {
+input,
+select {
   font-family: inherit;
+}
+
+/* Smooth, deliberate theme + surface transitions — not per-element hover
+   noise, just the handful of properties that actually change on toggle. */
+body,
+[data-surface] {
+  transition: background-color 0.18s ease, border-color 0.18s ease, color 0.18s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+/* Bottom-sheet entrance (mobile) */
+@keyframes sheet-up {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+.animate-sheet-up {
+  animation: sheet-up 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.animate-fade-in {
+  animation: fade-in 0.15s ease-out;
+}
+.animate-pop-in {
+  animation: pop-in 0.16s cubic-bezier(0.16, 1, 0.3, 1);
 }

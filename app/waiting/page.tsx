@@ -19,8 +19,8 @@ export default function WaitingPage() {
   const items = waitingTasks(tasks).sort((a, b) => (a.waitingSince ?? 0) - (b.waitingSince ?? 0));
 
   return (
-    <div className="max-w-[680px] mx-auto px-5 md:px-8 py-7 pb-24 md:pb-16">
-      <h1 className="font-display text-[24px] font-bold mb-1">Waiting For</h1>
+    <div className="max-w-[680px] mx-auto px-5 md:px-8 py-8 pb-28 md:pb-16">
+      <h1 className="font-display text-[24px] font-bold mb-1.5 tracking-[-0.01em]">Waiting For</h1>
       <p className="text-text-dim text-[14px] mb-6">
         Things you can&apos;t move forward yourself — delegated, or blocked on someone else. Off your list until they come through.
       </p>
@@ -36,11 +36,11 @@ export default function WaitingPage() {
             const project = projects.find((p) => p.id === t.projectId);
             const days = t.waitingSince ? daysSince(t.waitingSince) : 0;
             return (
-              <div key={t.id} className="bg-surface border border-border-soft rounded-[9px] px-3.5 py-3">
+              <div key={t.id} className="bg-surface border border-border-soft rounded-2xl px-4 py-3.5 transition-colors hover:border-border">
                 <div className="flex items-start gap-2.5">
                   <button
                     onClick={() => toggleTask(t.id)}
-                    className="w-[18px] h-[18px] rounded-[5px] border-[1.5px] border-slate flex-shrink-0 mt-0.5 hover:border-amber"
+                    className="w-[18px] h-[18px] rounded-[6px] border-[1.5px] border-slate flex-shrink-0 mt-0.5 hover:border-amber transition-colors"
                     title="Mark done"
                   />
                   <div className="flex-1 min-w-0">
@@ -61,13 +61,13 @@ export default function WaitingPage() {
                     <button
                       onClick={() => setWaiting(t.id, null)}
                       title="Came through — clear waiting"
-                      className="p-1.5 rounded-md text-text-faint hover:bg-surface-2 hover:text-sage"
+                      className="p-1.5 rounded-lg text-text-faint hover:bg-surface-2 hover:text-sage transition-colors"
                     >
                       <Check size={15} />
                     </button>
                     <button
                       onClick={() => setConfirmDeleteId(t.id)}
-                      className="p-1.5 rounded-md text-text-faint hover:bg-surface-2 hover:text-rust"
+                      className="p-1.5 rounded-lg text-text-faint hover:bg-surface-2 hover:text-rust transition-colors"
                     >
                       <X size={15} />
                     </button>

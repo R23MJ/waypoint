@@ -7,7 +7,8 @@ import { isAvailable, tasksForProject, sortByPriorityThenOrder } from "@/lib/gtd
 import TaskItem from "@/components/TaskItem";
 import AddTaskForm from "@/components/AddTaskForm";
 import ConfirmDialog from "@/components/ConfirmDialog";
-import { ChevronRight } from "lucide-react";
+import WaitingPrompt from "@/components/WaitingPrompt";
+import { ChevronRight, Compass } from "lucide-react";
 
 export default function NextActionsPage() {
   const projects = useAppStore((s) => s.projects);
@@ -15,13 +16,11 @@ export default function NextActionsPage() {
   const contexts = useAppStore((s) => s.contexts);
   const toggleTask = useAppStore((s) => s.toggleTask);
   const deleteTask = useAppStore((s) => s.deleteTask);
-  const setWaiting = useAppStore((s) => s.setWaiting);
   const addTask = useAppStore((s) => s.addTask);
 
   const [activeContext, setActiveContext] = useState<string | null>(null);
   const [addingStandalone, setAddingStandalone] = useState(false);
   const [waitingPromptFor, setWaitingPromptFor] = useState<string | null>(null);
-  const [waitingText, setWaitingText] = useState("");
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   const activeProjects = projects.filter((p) => p.status === "active");
@@ -51,18 +50,18 @@ export default function NextActionsPage() {
   const nothingAtAll = withSteps.length === 0 && standaloneAvailable.length === 0;
 
   return (
-    <div className="max-w-[720px] mx-auto px-5 md:px-8 py-7 pb-24 md:pb-16">
-      <h1 className="font-display text-[24px] font-bold mb-1">What do you want to work on?</h1>
-      <p className="text-text-dim text-[14px] mb-5">
+    <div className="max-w-[720px] mx-auto px-5 md:px-8 py-8 pb-28 md:pb-16">
+      <h1 className="font-display text-[26px] font-bold mb-1.5 tracking-[-0.01em]">What do you want to work on?</h1>
+      <p className="text-text-dim text-[14px] mb-6">
         Every unblocked next step, across every active project — nothing you can&apos;t start yet.
       </p>
 
-      {contexts.length > 0 && (
-        <div className="flex flex-wrap gap-1.5 mb-6">
+      {contexts.length > 0 && (activeProjects.length > 0 || standaloneTasks.length > 0) && (
+        <div className="flex flex-wrap gap-1.5 mb-6 -mx-0.5">
           <button
             onClick={() => setActiveContext(null)}
-            className={`text-[12px] rounded-full px-3 py-1.5 border ${
-              activeContext === null ? "bg-amber-dim border-amber text-amber" : "bg-surface border-border-soft text-text-dim"
+            className={`text-[12px] rounded-full px-3 py-1.5 border transition-colors ${
+              activeContext === null ? "bg-amber/12 border-amber text-amber" : "bg-surface border-border-soft text-text-dim hover:border-border"
             }`}
           >
             All contexts
@@ -71,8 +70,8 @@ export default function NextActionsPage() {
             <button
               key={c.id}
               onClick={() => setActiveContext(c.id)}
-              className={`text-[12px] rounded-full px-3 py-1.5 border ${
-                activeContext === c.id ? "bg-amber-dim border-amber text-amber" : "bg-surface border-border-soft text-text-dim"
+              className={`text-[12px] rounded-full px-3 py-1.5 border transition-colors ${
+                activeContext === c.id ? "bg-amber/12 border-amber text-amber" : "bg-surface border-border-soft text-text-dim hover:border-border"
               }`}
             >
               {c.icon} {c.name}
@@ -82,24 +81,25 @@ export default function NextActionsPage() {
       )}
 
       {nothingAtAll && activeProjects.length === 0 && standaloneTasks.length === 0 && (
-        <div className="text-center py-16 text-text-faint">
-          Nothing set up yet.{" "}
-          <Link href="/projects" className="text-amber hover:underline">
-            Start a project
-          </Link>{" "}
-          or capture something in your{" "}
-          <Link href="/inbox" className="text-amber hover:underline">
-            inbox
-          </Link>
-          .
+        <div className="text-center py-20 flex flex-col items-center gap-3">
+          <Compass size={28} strokeWidth={1.5} className="text-text-faint" />
+          <p className="text-text-faint text-[13.5px] max-w-[280px]">
+            Nothing set up yet.{" "}
+            <Link href="/projects" className="text-amber hover:underline">
+              Start a project
+            </Link>{" "}
+            or capture something in your{" "}
+            <Link href="/inbox" className="text-amber hover:underline">
+              inbox
+            </Link>
+            .
+          </p>
         </div>
       )}
 
       {standaloneAvailable.length > 0 && (
-        <div className="mb-3">
-          <div className="flex items-center justify-between mb-2 px-1">
-            <h3 className="text-[15px] font-semibold">Standalone actions</h3>
-          </div>
+        <div className="mb-4">
+          <h3 className="text-[13px] font-semibold text-text-faint mb-2 px-0.5">Standalone actions</h3>
           {standaloneAvailable.map((t) => (
             <TaskItem
               key={t.id}
@@ -108,20 +108,17 @@ export default function NextActionsPage() {
               contexts={contexts}
               onToggle={() => toggleTask(t.id)}
               onDelete={() => setConfirmDeleteId(t.id)}
-              onSetWaiting={() => {
-                setWaitingPromptFor(t.id);
-                setWaitingText(t.waitingOn ?? "");
-              }}
+              onSetWaiting={() => setWaitingPromptFor(t.id)}
             />
           ))}
         </div>
       )}
 
       {withSteps.map(({ project, available }) => (
-        <div key={project.id} className="bg-surface border border-border-soft rounded-[10px] px-4 py-3.5 mb-3">
-          <Link href={`/projects/${project.id}`} className="flex items-center justify-between mb-2.5 group">
-            <h3 className="text-[15px] font-semibold group-hover:text-amber">{project.name}</h3>
-            <span className="text-[12px] text-text-faint group-hover:text-amber flex items-center gap-0.5">
+        <div key={project.id} className="bg-surface border border-border-soft rounded-2xl px-4 py-4 mb-3">
+          <Link href={`/projects/${project.id}`} className="flex items-center justify-between mb-3 group">
+            <h3 className="text-[15px] font-semibold group-hover:text-amber transition-colors">{project.name}</h3>
+            <span className="text-[12px] text-text-faint group-hover:text-amber transition-colors flex items-center gap-0.5">
               open <ChevronRight size={13} />
             </span>
           </Link>
@@ -133,23 +130,20 @@ export default function NextActionsPage() {
               contexts={contexts}
               onToggle={() => toggleTask(t.id)}
               onDelete={() => setConfirmDeleteId(t.id)}
-              onSetWaiting={() => {
-                setWaitingPromptFor(t.id);
-                setWaitingText(t.waitingOn ?? "");
-              }}
+              onSetWaiting={() => setWaitingPromptFor(t.id)}
             />
           ))}
         </div>
       ))}
 
       {withoutSteps.length > 0 && (
-        <div className="bg-surface/60 border border-border-soft rounded-[10px] px-4 py-3.5 mb-3 opacity-60">
-          <h3 className="text-[14px] font-medium mb-2">No steps ready</h3>
+        <div className="bg-surface/50 border border-border-soft rounded-2xl px-4 py-4 mb-3">
+          <h3 className="text-[13px] font-medium text-text-faint mb-1.5">No steps ready</h3>
           {withoutSteps.map(({ project }) => (
             <Link
               key={project.id}
               href={`/projects/${project.id}`}
-              className="block text-[13.5px] py-1.5 hover:text-amber"
+              className="block text-[13.5px] text-text-dim py-1.5 hover:text-amber transition-colors"
             >
               {project.name} — add or unblock a step →
             </Link>
@@ -172,53 +166,14 @@ export default function NextActionsPage() {
         ) : (
           <button
             onClick={() => setAddingStandalone(true)}
-            className="w-full text-left border border-dashed border-border rounded-[9px] px-4 py-2.5 text-[13.5px] text-text-faint hover:text-text-dim hover:border-text-faint"
+            className="w-full text-left border border-dashed border-border rounded-2xl px-4 py-3 text-[13.5px] text-text-faint hover:text-text-dim hover:border-text-faint transition-colors"
           >
             + Add a standalone next action
           </button>
         )}
       </div>
 
-      {waitingPromptFor && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-5" onClick={() => setWaitingPromptFor(null)}>
-          <div className="bg-surface border border-border rounded-xl p-5 w-full max-w-sm" onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-[15px] font-semibold mb-3">Waiting on whom or what?</h3>
-            <input
-              type="text"
-              autoFocus
-              value={waitingText}
-              onChange={(e) => setWaitingText(e.target.value)}
-              placeholder="e.g. Paul to send the logo files"
-              className="w-full bg-bg-2 border border-border rounded-md px-2.5 py-2 text-[13.5px] mb-3"
-            />
-            <div className="flex gap-2">
-              <button
-                onClick={() => {
-                  setWaiting(waitingPromptFor, waitingText.trim() || "someone");
-                  setWaitingPromptFor(null);
-                }}
-                className="px-3.5 py-1.5 rounded-md text-[13px] font-semibold bg-amber text-[#2a2117]"
-              >
-                Mark waiting
-              </button>
-              {tasks.find((t) => t.id === waitingPromptFor)?.waitingOn && (
-                <button
-                  onClick={() => {
-                    setWaiting(waitingPromptFor, null);
-                    setWaitingPromptFor(null);
-                  }}
-                  className="px-3.5 py-1.5 rounded-md text-[13px] font-semibold text-rust"
-                >
-                  Clear
-                </button>
-              )}
-              <button onClick={() => setWaitingPromptFor(null)} className="px-3.5 py-1.5 rounded-md text-[13px] font-semibold text-text-faint">
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <WaitingPrompt taskId={waitingPromptFor} onClose={() => setWaitingPromptFor(null)} />
 
       <ConfirmDialog
         open={!!confirmDeleteId}
