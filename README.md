@@ -31,6 +31,29 @@ exactly that:
 - **Resources** (links, notes, videos, book passages, articles) attach to a
   project or to one specific step, so everything you need lives with the work.
 
+## Layout overhaul (round 3)
+
+Grounded in conventions from Linear, Things 3, Todoist and native mobile apps:
+
+- **Dashboard home** — greeting (optionally personalized in Settings → Your name),
+  a stats strip (due today / available / waiting), and a "Focus first" section
+  surfacing your highest-priority available steps before the full list.
+- **Master-detail Projects view** on desktop (≥1024px) — project list on the
+  left, selected project's detail inline on the right, no page reload. Narrower
+  screens keep the previous push-navigation to a full-screen project page.
+- **Drag-to-reorder** for a project's Next Steps (`@dnd-kit`), both by mouse and
+  touch (long-press to pick up on mobile). Manual order now wins over priority
+  *within* a project's step list — priority still auto-sorts the cross-project
+  Next Actions dashboard, but inside one project you're explicitly sequencing
+  steps, so a drag should stick.
+- **Swipe-to-delete** on task rows on touch devices (swipe left, tap the
+  revealed Delete button). Desktop keeps the hover-to-reveal ✕.
+- **Command palette** — the search overlay now also lists quick actions (jump
+  to any screen, open quick capture) even with an empty query. Open it with
+  `/` or `⌘K`/`Ctrl+K` from anywhere, not just by clicking the search field.
+- **Progress bars** on project rows (done/total steps) in both the Projects
+  list and the two-pane list.
+
 ## What's new since the first cut
 
 Added after a pass through what GTD/task-app reviews and forums call out as
@@ -105,3 +128,19 @@ lib/
   store.ts              Zustand store + localStorage persistence
   gtd.ts                Derived logic: available/blocked/waiting/stalled
 ```
+
+## Natural-language quick add (Todoist-style)
+
+Typing in the step title now recognizes shorthand — this is deterministic text
+parsing (`chrono-node` for dates + a few regexes), **not** an AI/LLM call, so
+it fits the "hold off on AI" decision and needs no backend:
+
+- Dates: `tomorrow`, `next friday`, `in 3 days`, `sep 30`, etc.
+- Priority: `p1` / `p2` / `p3` (Todoist convention: p1 = high).
+- Context: `@computer`, `@phone`, matched against your existing contexts.
+- Recurrence: `every day`, `daily`, `every monday`, `every 2 weeks`, etc.
+
+Recognized shorthand pre-fills the due date / priority / context / repeat
+fields (shown as chips above them) but never overwrites a field you've
+already set by hand. It's wired into both "Add a step" and the Inbox's
+"Do it — make it a next action" flow. See `lib/nlParse.ts`.

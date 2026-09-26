@@ -3,14 +3,16 @@
 import { useState } from "react";
 import { useAppStore } from "@/lib/store";
 import { daysSince } from "@/lib/gtd";
+import { parseQuickAdd } from "@/lib/nlParse";
 import { ProjectStatus } from "@/lib/types";
-import { Inbox as InboxIcon, X } from "lucide-react";
+import { Inbox as InboxIcon, X, Sparkles } from "lucide-react";
 
 type Dest = "task" | "new-project" | "someday" | "reference" | null;
 
 export default function InboxPage() {
   const inbox = useAppStore((s) => s.inbox);
   const projects = useAppStore((s) => s.projects);
+  const contexts = useAppStore((s) => s.contexts);
   const addInboxItem = useAppStore((s) => s.addInboxItem);
   const deleteInboxItem = useAppStore((s) => s.deleteInboxItem);
   const addTask = useAppStore((s) => s.addTask);
@@ -76,6 +78,7 @@ export default function InboxPage() {
                 <ProcessPanel
                   text={item.text}
                   projects={projects}
+                  contexts={contexts}
                   onDone={() => {
                     deleteInboxItem(item.id);
                     setOpenId(null);
@@ -105,6 +108,7 @@ export default function InboxPage() {
 function ProcessPanel({
   text,
   projects,
+  contexts,
   onDone,
   onCancel,
   addTask,
@@ -114,6 +118,7 @@ function ProcessPanel({
 }: {
   text: string;
   projects: ReturnType<typeof useAppStore.getState>["projects"];
+  contexts: ReturnType<typeof useAppStore.getState>["contexts"];
   onDone: () => void;
   onCancel: () => void;
   addTask: ReturnType<typeof useAppStore.getState>["addTask"];
@@ -124,6 +129,9 @@ function ProcessPanel({
   const [dest, setDest] = useState<Dest>(null);
   const [projectId, setProjectId] = useState<string>("");
   const [newProjectStatus, setNewProjectStatus] = useState<ProjectStatus>("active");
+
+  const parsed = parseQuickAdd(text, contexts);
+  const hasParsedHints = !!(parsed.matchedDateText || parsed.priority || parsed.matchedContextNames.length || parsed.recurrence);
 
   const options: { key: Dest; label: string }[] = [
     { key: "task", label: "Do it — make it a next action" },
@@ -150,6 +158,21 @@ function ProcessPanel({
 
       {dest === "task" && (
         <div>
+          {hasParsedHints && (
+            <div className="flex flex-wrap items-center gap-1.5 mb-2.5">
+              <Sparkles size={12} className="text-amber flex-shrink-0" />
+              {parsed.dueDate && (
+                <span className="text-[11px] bg-amber-dim text-amber rounded-md px-1.5 py-0.5">📅 {parsed.dueDate}</span>
+              )}
+              {parsed.priority && (
+                <span className="text-[11px] bg-amber-dim text-amber rounded-md px-1.5 py-0.5 capitalize">🚩 {parsed.priority}</span>
+              )}
+              {parsed.matchedContextNames.map((n) => (
+                <span key={n} className="text-[11px] bg-amber-dim text-amber rounded-md px-1.5 py-0.5">{n}</span>
+              ))}
+              {parsed.recurrence && <span className="text-[11px] bg-amber-dim text-amber rounded-md px-1.5 py-0.5">🔁 repeats</span>}
+            </div>
+          )}
           <div className="text-[11px] text-text-faint mb-1.5">attach to a project? (optional)</div>
           <select
             value={projectId}
@@ -165,7 +188,12 @@ function ProcessPanel({
           </select>
           <button
             onClick={() => {
-              addTask(projectId || null, text);
+              addTask(projectId || null, parsed.cleanTitle || text, {
+                dueDate: parsed.dueDate,
+                priority: parsed.priority ?? "normal",
+                contextIds: parsed.contextIds,
+                recurrence: parsed.recurrence,
+              });
               onDone();
             }}
             className="px-4 py-2 rounded-xl text-[13px] font-semibold bg-amber text-[#241d12] active:scale-[0.97] transition-transform"

@@ -2,12 +2,20 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useAppStore } from "@/lib/store";
 import { searchAll } from "@/lib/search";
 import { typeIcon } from "@/components/Resources";
-import { X, Search as SearchIcon } from "lucide-react";
+import { X, Search as SearchIcon, Compass, Inbox, FolderKanban, Clock, RefreshCw, Plus } from "lucide-react";
 
-export default function SearchOverlay({ onClose }: { onClose: () => void }) {
+export default function SearchOverlay({
+  onClose,
+  onQuickCapture,
+}: {
+  onClose: () => void;
+  onQuickCapture?: () => void;
+}) {
+  const router = useRouter();
   const projects = useAppStore((s) => s.projects);
   const tasks = useAppStore((s) => s.tasks);
   const resources = useAppStore((s) => s.resources);
@@ -28,10 +36,19 @@ export default function SearchOverlay({ onClose }: { onClose: () => void }) {
   const nothingFound =
     hasQuery && results.projects.length === 0 && results.tasks.length === 0 && results.resources.length === 0;
 
+  const ACTIONS = [
+    { label: "Quick capture", icon: Plus, run: () => onQuickCapture?.() },
+    { label: "Go to Next Actions", icon: Compass, run: () => router.push("/") },
+    { label: "Go to Inbox", icon: Inbox, run: () => router.push("/inbox") },
+    { label: "Go to Projects", icon: FolderKanban, run: () => router.push("/projects") },
+    { label: "Go to Waiting For", icon: Clock, run: () => router.push("/waiting") },
+    { label: "Go to Review", icon: RefreshCw, run: () => router.push("/review") },
+  ].filter((a) => a.label.toLowerCase().includes(q.trim().toLowerCase()));
+
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-start justify-center p-4 pt-[10vh]" onClick={onClose}>
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-[2px] z-50 flex items-start justify-center p-4 pt-[10vh] animate-fade-in" onClick={onClose}>
       <div
-        className="bg-surface border border-border rounded-xl w-full max-w-lg max-h-[70vh] flex flex-col overflow-hidden"
+        className="bg-surface border border-border rounded-2xl w-full max-w-lg max-h-[70vh] flex flex-col overflow-hidden shadow-lg animate-pop-in"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center gap-2 px-4 py-3 border-b border-border-soft">
@@ -41,7 +58,7 @@ export default function SearchOverlay({ onClose }: { onClose: () => void }) {
             type="text"
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="Search projects, steps, resources…"
+            placeholder="Search, or jump somewhere…"
             className="flex-1 bg-transparent text-[14px] outline-none"
           />
           <button onClick={onClose} className="text-text-faint hover:text-text flex-shrink-0">
@@ -50,12 +67,49 @@ export default function SearchOverlay({ onClose }: { onClose: () => void }) {
         </div>
 
         <div className="overflow-y-auto px-2 py-2">
-          {!hasQuery && (
-            <div className="text-[13px] text-text-faint text-center py-8">
-              Start typing to search everything.
-            </div>
+          {!hasQuery && ACTIONS.length > 0 && (
+            <ResultGroup title="Quick actions">
+              {ACTIONS.map((a) => {
+                const Icon = a.icon;
+                return (
+                  <button
+                    key={a.label}
+                    onClick={() => {
+                      a.run();
+                      onClose();
+                    }}
+                    className="w-full flex items-center gap-2.5 text-left px-3 py-2 rounded-lg hover:bg-surface-2 text-[13.5px]"
+                  >
+                    <Icon size={14} className="text-text-faint" />
+                    {a.label}
+                  </button>
+                );
+              })}
+            </ResultGroup>
           )}
-          {nothingFound && (
+
+          {hasQuery && ACTIONS.length > 0 && (
+            <ResultGroup title="Actions">
+              {ACTIONS.map((a) => {
+                const Icon = a.icon;
+                return (
+                  <button
+                    key={a.label}
+                    onClick={() => {
+                      a.run();
+                      onClose();
+                    }}
+                    className="w-full flex items-center gap-2.5 text-left px-3 py-2 rounded-lg hover:bg-surface-2 text-[13.5px]"
+                  >
+                    <Icon size={14} className="text-text-faint" />
+                    {a.label}
+                  </button>
+                );
+              })}
+            </ResultGroup>
+          )}
+
+          {nothingFound && ACTIONS.length === 0 && (
             <div className="text-[13px] text-text-faint text-center py-8">No matches for &quot;{q}&quot;.</div>
           )}
 

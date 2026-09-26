@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Compass, Inbox, FolderKanban, Clock, RefreshCw, Settings, Search, Plus } from "lucide-react";
@@ -27,10 +27,31 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const [searchOpen, setSearchOpen] = useState(false);
   const [quickAddOpen, setQuickAddOpen] = useState(false);
 
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      const target = e.target as HTMLElement | null;
+      const typing = target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable);
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setSearchOpen(true);
+      } else if (e.key === "/" && !typing) {
+        e.preventDefault();
+        setSearchOpen(true);
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
   return (
     <div className="flex h-dvh w-full">
       <NotificationChecker />
-      {searchOpen && <SearchOverlay onClose={() => setSearchOpen(false)} />}
+      {searchOpen && (
+        <SearchOverlay
+          onClose={() => setSearchOpen(false)}
+          onQuickCapture={() => setQuickAddOpen(true)}
+        />
+      )}
       <QuickAddSheet open={quickAddOpen} onClose={() => setQuickAddOpen(false)} />
 
       {/* Desktop sidebar */}
@@ -56,7 +77,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           >
             <Search size={14} />
             Search
-            <span className="ml-auto text-[10.5px] border border-border-soft rounded px-1.5 py-0.5">/</span>
+            <span className="ml-auto text-[10.5px] border border-border-soft rounded px-1.5 py-0.5">⌘K</span>
           </button>
         </div>
 

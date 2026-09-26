@@ -36,6 +36,7 @@ const initialState: AppState = {
   lastReviewedAt: null,
   notificationsEnabled: false,
   lastNotifiedDate: null,
+  displayName: "",
 };
 
 // No-op storage so the persist middleware never touches `localStorage`
@@ -94,6 +95,7 @@ interface Store extends AppState {
   deleteTask: (id: string) => void;
   setWaiting: (id: string, waitingOn: string | null) => void;
   reorderTask: (id: string, direction: "up" | "down") => void;
+  reorderTasks: (orderedIds: string[]) => void;
 
   addChecklistItem: (taskId: string, text: string) => void;
   toggleChecklistItem: (taskId: string, itemId: string) => void;
@@ -123,6 +125,7 @@ interface Store extends AppState {
 
   setNotificationsEnabled: (v: boolean) => void;
   markNotified: (date: string) => void;
+  setDisplayName: (name: string) => void;
 
   importData: (data: AppState) => void;
   clearAll: () => void;
@@ -271,6 +274,13 @@ export const useAppStore = create<Store>()(
             }),
           };
         }),
+      reorderTasks: (orderedIds) =>
+        set((s) => {
+          const orderMap = new Map(orderedIds.map((id, idx) => [id, idx]));
+          return {
+            tasks: s.tasks.map((t) => (orderMap.has(t.id) ? { ...t, order: orderMap.get(t.id)! } : t)),
+          };
+        }),
 
       addChecklistItem: (taskId, text) => {
         if (!text.trim()) return;
@@ -359,6 +369,7 @@ export const useAppStore = create<Store>()(
 
       setNotificationsEnabled: (v) => set({ notificationsEnabled: v }),
       markNotified: (date) => set({ lastNotifiedDate: date }),
+      setDisplayName: (name) => set({ displayName: name }),
 
       importData: (data) =>
         set({
@@ -371,12 +382,13 @@ export const useAppStore = create<Store>()(
           lastReviewedAt: data.lastReviewedAt ?? null,
           notificationsEnabled: data.notificationsEnabled ?? false,
           lastNotifiedDate: data.lastNotifiedDate ?? null,
+          displayName: data.displayName ?? "",
         }),
       clearAll: () => set({ ...initialState }),
     }),
     {
       name: "gtd-app-storage",
-      version: 2,
+      version: 3,
       storage: createJSONStorage(() =>
         typeof window !== "undefined" ? window.localStorage : noopStorage
       ),
@@ -391,6 +403,7 @@ export const useAppStore = create<Store>()(
         lastReviewedAt: s.lastReviewedAt,
         notificationsEnabled: s.notificationsEnabled,
         lastNotifiedDate: s.lastNotifiedDate,
+        displayName: s.displayName,
       }),
       migrate: (persisted) => {
         const p = persisted as AppState;
@@ -399,6 +412,7 @@ export const useAppStore = create<Store>()(
           tasks: (p.tasks ?? []).map(withTaskDefaults),
           notificationsEnabled: p.notificationsEnabled ?? false,
           lastNotifiedDate: p.lastNotifiedDate ?? null,
+          displayName: p.displayName ?? "",
         };
       },
     }

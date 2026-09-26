@@ -85,4 +85,5 @@ export interface AppState {
   lastReviewedAt: number | null;
   notificationsEnabled: boolean;
   lastNotifiedDate: string | null; // ISO date, so we notify at most once/day
+  displayName: string;
 }

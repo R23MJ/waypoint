@@ -3,17 +3,26 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useAppStore } from "@/lib/store";
-import { isAvailable, tasksForProject, sortByPriorityThenOrder } from "@/lib/gtd";
+import { isAvailable, tasksForProject, sortByPriorityThenOrder, isOverdue, isDueToday, waitingTasks } from "@/lib/gtd";
 import TaskItem from "@/components/TaskItem";
 import AddTaskForm from "@/components/AddTaskForm";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import WaitingPrompt from "@/components/WaitingPrompt";
-import { ChevronRight, Compass } from "lucide-react";
+import { ChevronRight, Compass, Flame } from "lucide-react";
+
+function greeting() {
+  const h = new Date().getHours();
+  if (h < 5) return "Working late";
+  if (h < 12) return "Good morning";
+  if (h < 18) return "Good afternoon";
+  return "Good evening";
+}
 
 export default function NextActionsPage() {
   const projects = useAppStore((s) => s.projects);
   const tasks = useAppStore((s) => s.tasks);
   const contexts = useAppStore((s) => s.contexts);
+  const displayName = useAppStore((s) => s.displayName);
   const toggleTask = useAppStore((s) => s.toggleTask);
   const deleteTask = useAppStore((s) => s.deleteTask);
   const addTask = useAppStore((s) => s.addTask);
@@ -24,6 +33,7 @@ export default function NextActionsPage() {
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   const activeProjects = projects.filter((p) => p.status === "active");
+  const activeProjectIds = new Set(activeProjects.map((p) => p.id));
 
   const filterByContext = (list: typeof tasks) =>
     activeContext ? list.filter((t) => t.contextIds.includes(activeContext)) : list;
@@ -49,12 +59,54 @@ export default function NextActionsPage() {
 
   const nothingAtAll = withSteps.length === 0 && standaloneAvailable.length === 0;
 
+  // Dashboard strip — computed across everything, ignoring the context filter.
+  const allAvailable = tasks.filter(
+    (t) => isAvailable(t, tasks) && (t.projectId === null || activeProjectIds.has(t.projectId))
+  );
+  const dueCount = tasks.filter((t) => !t.done && (isOverdue(t) || isDueToday(t))).length;
+  const waitingCount = waitingTasks(tasks).length;
+  const focusTasks = sortByPriorityThenOrder(allAvailable.filter((t) => t.priority === "high")).slice(0, 3);
+
   return (
     <div className="max-w-[720px] mx-auto px-5 md:px-8 py-8 pb-28 md:pb-16">
-      <h1 className="font-display text-[26px] font-bold mb-1.5 tracking-[-0.01em]">What do you want to work on?</h1>
-      <p className="text-text-dim text-[14px] mb-6">
+      <h1 className="font-display text-[26px] font-bold mb-1.5 tracking-[-0.01em]">
+        {greeting()}
+        {displayName ? `, ${displayName}` : ""}
+      </h1>
+      <p className="text-text-dim text-[14px] mb-5">
         Every unblocked next step, across every active project — nothing you can&apos;t start yet.
       </p>
+
+      {(dueCount > 0 || allAvailable.length > 0 || waitingCount > 0) && (
+        <div className="flex gap-2 mb-6">
+          <StatChip value={dueCount} label={dueCount === 1 ? "due today" : "due today"} tone={dueCount > 0 ? "rust" : "faint"} />
+          <StatChip value={allAvailable.length} label="available" tone="amber" />
+          <Link href="/waiting" className="flex-1">
+            <StatChip value={waitingCount} label="waiting" tone="faint" />
+          </Link>
+        </div>
+      )}
+
+      {focusTasks.length > 0 && (
+        <div className="mb-6">
+          <div className="flex items-center gap-1.5 mb-2 px-0.5">
+            <Flame size={13} className="text-rust" />
+            <h3 className="text-[13px] font-semibold text-text-faint">Focus first</h3>
+          </div>
+          {focusTasks.map((t) => (
+            <TaskItem
+              key={t.id}
+              task={t}
+              allTasks={tasks}
+              contexts={contexts}
+              projectLabel={projects.find((p) => p.id === t.projectId)?.name}
+              onToggle={() => toggleTask(t.id)}
+              onDelete={() => setConfirmDeleteId(t.id)}
+              onSetWaiting={() => setWaitingPromptFor(t.id)}
+            />
+          ))}
+        </div>
+      )}
 
       {contexts.length > 0 && (activeProjects.length > 0 || standaloneTasks.length > 0) && (
         <div className="flex flex-wrap gap-1.5 mb-6 -mx-0.5">
@@ -184,6 +236,21 @@ export default function NextActionsPage() {
         }}
         onCancel={() => setConfirmDeleteId(null)}
       />
+    </div>
+  );
+}
+
+function StatChip({ value, label, tone }: { value: number; label: string; tone: "rust" | "amber" | "faint" }) {
+  const toneClasses =
+    tone === "rust" && value > 0
+      ? "border-rust/40 bg-rust/10 text-rust"
+      : tone === "amber" && value > 0
+      ? "border-amber/40 bg-amber/10 text-amber"
+      : "border-border-soft bg-surface text-text-faint";
+  return (
+    <div className={`flex-1 rounded-xl border px-3 py-2.5 text-center ${toneClasses}`}>
+      <div className="text-[17px] font-bold font-display leading-none">{value}</div>
+      <div className="text-[10.5px] mt-1 opacity-80">{label}</div>
     </div>
   );
 }

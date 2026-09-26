@@ -16,6 +16,8 @@ export default function SettingsPage() {
   const setNotificationsEnabled = useAppStore((s) => s.setNotificationsEnabled);
   const themeMode = useThemeStore((s) => s.mode);
   const setThemeMode = useThemeStore((s) => s.setMode);
+  const displayName = useAppStore((s) => s.displayName);
+  const setDisplayName = useAppStore((s) => s.setDisplayName);
 
   const [newCtxName, setNewCtxName] = useState("");
   const [newCtxIcon, setNewCtxIcon] = useState("\ud83d\udccc");
@@ -33,6 +35,9 @@ export default function SettingsPage() {
       inbox: state.inbox,
       somedayIdeas: state.somedayIdeas,
       lastReviewedAt: state.lastReviewedAt,
+      notificationsEnabled: state.notificationsEnabled,
+      lastNotifiedDate: state.lastNotifiedDate,
+      displayName: state.displayName,
     };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
@@ -82,6 +87,16 @@ export default function SettingsPage() {
             </button>
           ))}
         </div>
+      </SettingsSection>
+
+      <SettingsSection title="Your name" description="Used only for the greeting on your Next Actions screen.">
+        <input
+          type="text"
+          value={displayName}
+          onChange={(e) => setDisplayName(e.target.value)}
+          placeholder="What should Waypoint call you?"
+          className="w-full max-w-xs bg-bg-2 border border-border rounded-xl px-3.5 py-2.5 text-[13.5px]"
+        />
       </SettingsSection>
 
       <SettingsSection

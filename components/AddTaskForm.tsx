@@ -1,7 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Task, Context, Priority, RecurrenceRule, RecurrenceFreq } from "@/lib/types";
+import { parseQuickAdd } from "@/lib/nlParse";
+import { describeRecurrence } from "@/lib/gtd";
+import { Sparkles } from "lucide-react";
 
 export default function AddTaskForm({
   candidates,
@@ -35,15 +38,35 @@ export default function AddTaskForm({
   const [recurFreq, setRecurFreq] = useState<RecurrenceFreq | "none">("none");
   const [recurInterval, setRecurInterval] = useState(1);
 
+  // Which fields the person has set by hand — once touched, typed shorthand
+  // stops overwriting that field, so nothing ever fights their explicit choice.
+  const [touched, setTouched] = useState({ due: false, priority: false, ctx: false, recur: false });
+
+  const parsed = useMemo(() => parseQuickAdd(title, contexts), [title, contexts]);
+
+  // Auto-fill from recognized shorthand (Todoist-style: "tomorrow", "p1",
+  // "@computer", "every monday") — deterministic text parsing, not AI.
+  if (parsed.dueDate && !touched.due && dueDate !== parsed.dueDate) setDueDate(parsed.dueDate);
+  if (parsed.priority && !touched.priority && priority !== parsed.priority) setPriority(parsed.priority);
+  if (parsed.contextIds.length && !touched.ctx && ctxIds.join() !== parsed.contextIds.join()) setCtxIds(parsed.contextIds);
+  if (parsed.recurrence && !touched.recur && recurFreq !== parsed.recurrence.freq) {
+    setRecurFreq(parsed.recurrence.freq);
+    setRecurInterval(parsed.recurrence.interval);
+  }
+
+  const hasParsedHints = !!(parsed.matchedDateText || parsed.priority || parsed.matchedContextNames.length || parsed.recurrence);
+
   function toggleDep(id: string) {
     setDeps((d) => (d.includes(id) ? d.filter((x) => x !== id) : [...d, id]));
   }
   function toggleCtx(id: string) {
+    setTouched((t) => ({ ...t, ctx: true }));
     setCtxIds((c) => (c.includes(id) ? c.filter((x) => x !== id) : [...c, id]));
   }
   function submit() {
-    if (!title.trim()) return;
-    onSave(title, {
+    const finalTitle = (parsed.cleanTitle || title).trim();
+    if (!finalTitle) return;
+    onSave(finalTitle, {
       dependsOn: deps,
       contextIds: ctxIds,
       deferUntil: defer || null,
@@ -58,12 +81,36 @@ export default function AddTaskForm({
       <input
         type="text"
         autoFocus={autoFocus}
-        placeholder="What's the next step?"
+        placeholder="What's the next step? Try “call Paul tomorrow @phone p1”"
         value={title}
         onChange={(e) => setTitle(e.target.value)}
         onKeyDown={(e) => e.key === "Enter" && submit()}
-        className="w-full bg-bg-2 border border-border rounded-xl px-3 py-2 text-[13.5px] mb-2.5 focus:outline-none focus:border-text-faint transition-colors"
+        className="w-full bg-bg-2 border border-border rounded-xl px-3 py-2 text-[13.5px] mb-1.5 focus:outline-none focus:border-text-faint transition-colors"
       />
+
+      {hasParsedHints && (
+        <div className="flex flex-wrap items-center gap-1.5 mb-2.5">
+          <Sparkles size={12} className="text-amber flex-shrink-0" />
+          {parsed.matchedDateText && (
+            <span className="text-[11px] bg-amber-dim text-amber rounded-md px-1.5 py-0.5">📅 {dueDate}</span>
+          )}
+          {parsed.priority && (
+            <span className="text-[11px] bg-amber-dim text-amber rounded-md px-1.5 py-0.5 capitalize">
+              🚩 {parsed.priority}
+            </span>
+          )}
+          {parsed.matchedContextNames.map((n) => (
+            <span key={n} className="text-[11px] bg-amber-dim text-amber rounded-md px-1.5 py-0.5">
+              {n}
+            </span>
+          ))}
+          {parsed.recurrence && (
+            <span className="text-[11px] bg-amber-dim text-amber rounded-md px-1.5 py-0.5">
+              🔁 {describeRecurrence(parsed.recurrence)}
+            </span>
+          )}
+        </div>
+      )}
 
       <div className="mb-2.5">
         <div className="text-[11px] text-text-faint mb-1.5">priority</div>
@@ -72,7 +119,10 @@ export default function AddTaskForm({
             <button
               key={p}
               type="button"
-              onClick={() => setPriority(p)}
+              onClick={() => {
+                setTouched((t) => ({ ...t, priority: true }));
+                setPriority(p);
+              }}
               className={`text-[11.5px] rounded-md px-2.5 py-1 border capitalize ${
                 priority === p
                   ? p === "high"
@@ -91,7 +141,7 @@ export default function AddTaskForm({
 
       {contexts.length > 0 && (
         <div className="mb-2.5">
-          <div className="text-[11px] text-text-faint mb-1.5">context (optional)</div>
+          <div className="text-[11px] text-text-faint mb-1.5">context (optional — or type @name above)</div>
           <div className="flex flex-wrap gap-1.5">
             {contexts.map((c) => (
               <button
@@ -127,11 +177,14 @@ export default function AddTaskForm({
 
       <div className="flex gap-3 mb-2.5">
         <div className="flex-1">
-          <div className="text-[11px] text-text-faint mb-1.5">due date (optional)</div>
+          <div className="text-[11px] text-text-faint mb-1.5">due date (optional — or type it above)</div>
           <input
             type="date"
             value={dueDate}
-            onChange={(e) => setDueDate(e.target.value)}
+            onChange={(e) => {
+              setTouched((t) => ({ ...t, due: true }));
+              setDueDate(e.target.value);
+            }}
             className="w-full bg-bg-2 border border-border rounded-md px-2.5 py-1.5 text-[12.5px] text-text-dim"
           />
         </div>
@@ -147,11 +200,14 @@ export default function AddTaskForm({
       </div>
 
       <div className="mb-3">
-        <div className="text-[11px] text-text-faint mb-1.5">repeats (optional)</div>
+        <div className="text-[11px] text-text-faint mb-1.5">repeats (optional — or type “every monday”, “daily”...)</div>
         <div className="flex items-center gap-1.5">
           <select
             value={recurFreq}
-            onChange={(e) => setRecurFreq(e.target.value as RecurrenceFreq | "none")}
+            onChange={(e) => {
+              setTouched((t) => ({ ...t, recur: true }));
+              setRecurFreq(e.target.value as RecurrenceFreq | "none");
+            }}
             className="bg-bg-2 border border-border rounded-md px-2 py-1.5 text-[12.5px] text-text-dim"
           >
             <option value="none">Doesn&apos;t repeat</option>
@@ -167,7 +223,10 @@ export default function AddTaskForm({
                 min={1}
                 max={365}
                 value={recurInterval}
-                onChange={(e) => setRecurInterval(Math.max(1, Number(e.target.value) || 1))}
+                onChange={(e) => {
+                  setTouched((t) => ({ ...t, recur: true }));
+                  setRecurInterval(Math.max(1, Number(e.target.value) || 1));
+                }}
                 className="w-14 bg-bg-2 border border-border rounded-md px-2 py-1.5 text-[12.5px] text-text-dim"
               />
               <span className="text-[11.5px] text-text-faint">

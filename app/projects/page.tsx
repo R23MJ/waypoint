@@ -1,13 +1,16 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useAppStore } from "@/lib/store";
 import { availableTasks, tasksForProject } from "@/lib/gtd";
+import { useMediaQuery } from "@/lib/useMediaQuery";
 import { ProjectStatus } from "@/lib/types";
 import { ResourceCard, ResourceForm } from "@/components/Resources";
 import ConfirmDialog from "@/components/ConfirmDialog";
-import { ChevronRight, X } from "lucide-react";
+import ProjectDetail from "@/components/ProjectDetail";
+import ProjectProgress from "@/components/ProjectProgress";
+import { ChevronRight, X, FolderKanban } from "lucide-react";
 
 const TABS: { key: ProjectStatus; label: string }[] = [
   { key: "active", label: "Active" },
@@ -16,6 +19,9 @@ const TABS: { key: ProjectStatus; label: string }[] = [
 ];
 
 export default function ProjectsPage() {
+  const router = useRouter();
+  const isDesktop = useMediaQuery("(min-width: 1024px)");
+
   const projects = useAppStore((s) => s.projects);
   const tasks = useAppStore((s) => s.tasks);
   const resources = useAppStore((s) => s.resources);
@@ -31,20 +37,26 @@ export default function ProjectsPage() {
   const [ideaText, setIdeaText] = useState("");
   const [addingRef, setAddingRef] = useState(false);
   const [confirmIdeaId, setConfirmIdeaId] = useState<string | null>(null);
+  const [selected, setSelected] = useState<string | null>(null);
 
   const list = projects.filter((p) => p.status === tab);
   const unfiledResources = resources.filter((r) => !r.projectId && !r.taskId);
 
-  return (
-    <div className="max-w-[720px] mx-auto px-5 md:px-8 py-8 pb-28 md:pb-16">
-      <h1 className="font-display text-[24px] font-bold mb-6 tracking-[-0.01em]">Projects</h1>
+  function openProject(id: string) {
+    if (isDesktop) setSelected(id);
+    else router.push(`/projects/${id}`);
+  }
 
-      <div className="flex gap-1 mb-6 bg-surface-2 rounded-xl p-1 w-fit">
+  const listColumn = (
+    <div className="max-w-[720px] lg:max-w-none mx-auto lg:mx-0 px-5 md:px-8 lg:px-6 py-8 lg:py-7 pb-28 lg:pb-10">
+      <h1 className="font-display text-[26px] lg:text-[20px] font-bold mb-6 lg:mb-5 tracking-[-0.01em]">Projects</h1>
+
+      <div className="flex gap-1 mb-6 bg-surface-2 rounded-xl p-1 w-fit lg:w-full">
         {TABS.map((t) => (
           <button
             key={t.key}
             onClick={() => setTab(t.key)}
-            className={`text-[12.5px] px-3.5 py-1.5 rounded-lg font-medium transition-colors ${
+            className={`text-[12.5px] px-3.5 py-1.5 rounded-lg font-medium transition-colors lg:flex-1 ${
               tab === t.key ? "bg-surface text-text shadow-sm" : "text-text-faint hover:text-text-dim"
             }`}
           >
@@ -59,20 +71,30 @@ export default function ProjectsPage() {
         <div className="flex flex-col gap-1.5 mb-4">
           {list.map((p) => {
             const ready = availableTasks(tasks, tasksForProject(tasks, p.id)).length;
+            const isSelected = isDesktop && selected === p.id;
             return (
-              <Link
+              <button
                 key={p.id}
-                href={`/projects/${p.id}`}
-                className="flex items-center justify-between bg-surface border border-border-soft rounded-xl px-4 py-3.5 hover:border-border transition-colors"
+                onClick={() => openProject(p.id)}
+                className={`text-left flex items-center justify-between border rounded-xl px-4 py-3.5 transition-colors ${
+                  isSelected
+                    ? "bg-amber/10 border-amber"
+                    : "bg-surface border-border-soft hover:border-border"
+                }`}
               >
-                <span className="text-[14px]">{p.name}</span>
-                <span className="flex items-center gap-2">
+                <div className="min-w-0">
+                  <span className="text-[14px] block truncate">{p.name}</span>
+                  <ProjectProgress projectId={p.id} />
+                </div>
+                <span className="flex items-center gap-2 flex-shrink-0 ml-2">
                   {ready > 0 && (
-                    <span className="text-[10.5px] text-amber bg-amber-dim rounded-full font-medium px-2 py-0.5">{ready} ready</span>
+                    <span className="text-[10.5px] text-amber bg-amber-dim rounded-full font-medium px-2 py-0.5">
+                      {ready} ready
+                    </span>
                   )}
-                  <ChevronRight size={15} className="text-text-faint" />
+                  {!isDesktop && <ChevronRight size={15} className="text-text-faint" />}
                 </span>
-              </Link>
+              </button>
             );
           })}
         </div>
@@ -93,9 +115,10 @@ export default function ProjectsPage() {
             <button
               onClick={() => {
                 if (newName.trim()) {
-                  addProject(newName, tab);
+                  const id = addProject(newName, tab);
                   setNewName("");
                   setAdding(false);
+                  if (isDesktop) setSelected(id);
                 }
               }}
               className="px-3.5 py-1.5 rounded-lg text-[13px] font-semibold bg-amber text-[#241d12] active:scale-[0.97] transition-transform"
@@ -195,6 +218,24 @@ export default function ProjectsPage() {
         }}
         onCancel={() => setConfirmIdeaId(null)}
       />
+    </div>
+  );
+
+  if (!isDesktop) return listColumn;
+
+  return (
+    <div className="flex h-full">
+      <div className="w-[360px] flex-shrink-0 border-r border-border-soft h-full overflow-y-auto">{listColumn}</div>
+      <div className="flex-1 min-w-0 h-full overflow-y-auto">
+        {selected ? (
+          <ProjectDetail projectId={selected} onDeleted={() => setSelected(null)} />
+        ) : (
+          <div className="h-full flex flex-col items-center justify-center gap-3 text-text-faint">
+            <FolderKanban size={30} strokeWidth={1.5} />
+            <p className="text-[13.5px]">Select a project to see its steps and resources.</p>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
