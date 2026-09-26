@@ -1,0 +1,287 @@
+"use client";
+
+import { create } from "zustand";
+import { persist, createJSONStorage } from "zustand/middleware";
+import { newId } from "./id";
+import {
+  AppState,
+  Context,
+  InboxItem,
+  Project,
+  ProjectStatus,
+  ResourceType,
+  SomedayIdea,
+  Task,
+} from "./types";
+
+const DEFAULT_CONTEXTS: Context[] = [
+  { id: "ctx-computer", name: "Computer", icon: "\ud83d\udcbb" },
+  { id: "ctx-phone", name: "Phone", icon: "\ud83d\udcde" },
+  { id: "ctx-errands", name: "Errands", icon: "\ud83d\ude97" },
+  { id: "ctx-home", name: "Home", icon: "\ud83c\udfe0" },
+  { id: "ctx-anywhere", name: "Anywhere", icon: "\ud83c\udf10" },
+];
+
+const initialState: AppState = {
+  projects: [],
+  tasks: [],
+  resources: [],
+  contexts: DEFAULT_CONTEXTS,
+  inbox: [],
+  somedayIdeas: [],
+  lastReviewedAt: null,
+};
+
+// No-op storage so the persist middleware never touches `localStorage`
+// during server-side rendering, where it does not exist.
+const noopStorage = {
+  getItem: () => null,
+  setItem: () => {},
+  removeItem: () => {},
+};
+
+interface Store extends AppState {
+  hasHydrated: boolean;
+  setHasHydrated: (v: boolean) => void;
+
+  addProject: (name: string, status: ProjectStatus) => string;
+  updateProject: (id: string, patch: Partial<Project>) => void;
+  deleteProject: (id: string) => void;
+
+  addTask: (
+    projectId: string | null,
+    title: string,
+    opts?: Partial<Pick<Task, "dependsOn" | "contextIds" | "deferUntil" | "notes">>
+  ) => string;
+  updateTask: (id: string, patch: Partial<Task>) => void;
+  toggleTask: (id: string) => void;
+  deleteTask: (id: string) => void;
+  setWaiting: (id: string, waitingOn: string | null) => void;
+  reorderTask: (id: string, direction: "up" | "down") => void;
+
+  addResource: (data: {
+    projectId: string | null;
+    taskId: string | null;
+    type: ResourceType;
+    title: string;
+    url?: string;
+    content?: string;
+  }) => void;
+  deleteResource: (id: string) => void;
+
+  addContext: (name: string, icon: string) => void;
+  updateContext: (id: string, patch: Partial<Context>) => void;
+  deleteContext: (id: string) => void;
+
+  addInboxItem: (text: string) => void;
+  deleteInboxItem: (id: string) => void;
+
+  addSomedayIdea: (text: string) => void;
+  deleteSomedayIdea: (id: string) => void;
+
+  markReviewed: () => void;
+
+  importData: (data: AppState) => void;
+  clearAll: () => void;
+}
+
+export const useAppStore = create<Store>()(
+  persist(
+    (set, get) => ({
+      ...initialState,
+      hasHydrated: false,
+      setHasHydrated: (v) => set({ hasHydrated: v }),
+
+      addProject: (name, status) => {
+        const id = newId();
+        const project: Project = {
+          id,
+          name: name.trim(),
+          status,
+          scheduledDate: null,
+          notes: "",
+          createdAt: Date.now(),
+        };
+        set((s) => ({ projects: [...s.projects, project] }));
+        return id;
+      },
+      updateProject: (id, patch) =>
+        set((s) => ({
+          projects: s.projects.map((p) => (p.id === id ? { ...p, ...patch } : p)),
+        })),
+      deleteProject: (id) =>
+        set((s) => ({
+          projects: s.projects.filter((p) => p.id !== id),
+          tasks: s.tasks.filter((t) => t.projectId !== id),
+          resources: s.resources.filter((r) => r.projectId !== id),
+        })),
+
+      addTask: (projectId, title, opts) => {
+        const id = newId();
+        const siblings = get().tasks.filter((t) => t.projectId === projectId);
+        const maxOrder = siblings.reduce((m, t) => Math.max(m, t.order), 0);
+        const task: Task = {
+          id,
+          projectId,
+          title: title.trim(),
+          notes: opts?.notes ?? "",
+          done: false,
+          completedAt: null,
+          dependsOn: opts?.dependsOn ?? [],
+          contextIds: opts?.contextIds ?? [],
+          waitingOn: null,
+          waitingSince: null,
+          deferUntil: opts?.deferUntil ?? null,
+          order: maxOrder + 1,
+          createdAt: Date.now(),
+        };
+        set((s) => ({ tasks: [...s.tasks, task] }));
+        return id;
+      },
+      updateTask: (id, patch) =>
+        set((s) => ({
+          tasks: s.tasks.map((t) => (t.id === id ? { ...t, ...patch } : t)),
+        })),
+      toggleTask: (id) =>
+        set((s) => ({
+          tasks: s.tasks.map((t) =>
+            t.id === id
+              ? {
+                  ...t,
+                  done: !t.done,
+                  completedAt: !t.done ? Date.now() : null,
+                  waitingOn: !t.done ? null : t.waitingOn,
+                }
+              : t
+          ),
+        })),
+      deleteTask: (id) =>
+        set((s) => ({
+          tasks: s.tasks
+            .filter((t) => t.id !== id)
+            .map((t) => ({
+              ...t,
+              dependsOn: t.dependsOn.filter((d) => d !== id),
+            })),
+          resources: s.resources.map((r) =>
+            r.taskId === id ? { ...r, taskId: null } : r
+          ),
+        })),
+      setWaiting: (id, waitingOn) =>
+        set((s) => ({
+          tasks: s.tasks.map((t) =>
+            t.id === id
+              ? {
+                  ...t,
+                  waitingOn,
+                  waitingSince: waitingOn ? Date.now() : null,
+                }
+              : t
+          ),
+        })),
+      reorderTask: (id, direction) =>
+        set((s) => {
+          const task = s.tasks.find((t) => t.id === id);
+          if (!task) return s;
+          const siblings = s.tasks
+            .filter((t) => t.projectId === task.projectId)
+            .sort((a, b) => a.order - b.order);
+          const idx = siblings.findIndex((t) => t.id === id);
+          const swapIdx = direction === "up" ? idx - 1 : idx + 1;
+          if (swapIdx < 0 || swapIdx >= siblings.length) return s;
+          const other = siblings[swapIdx];
+          const aOrder = task.order;
+          const bOrder = other.order;
+          return {
+            tasks: s.tasks.map((t) => {
+              if (t.id === task.id) return { ...t, order: bOrder };
+              if (t.id === other.id) return { ...t, order: aOrder };
+              return t;
+            }),
+          };
+        }),
+
+      addResource: (data) =>
+        set((s) => ({
+          resources: [
+            ...s.resources,
+            {
+              id: newId(),
+              projectId: data.projectId,
+              taskId: data.taskId,
+              type: data.type,
+              title: data.title.trim(),
+              url: (data.url ?? "").trim(),
+              content: (data.content ?? "").trim(),
+              createdAt: Date.now(),
+            },
+          ],
+        })),
+      deleteResource: (id) =>
+        set((s) => ({ resources: s.resources.filter((r) => r.id !== id) })),
+
+      addContext: (name, icon) =>
+        set((s) => ({
+          contexts: [...s.contexts, { id: newId(), name: name.trim(), icon }],
+        })),
+      updateContext: (id, patch) =>
+        set((s) => ({
+          contexts: s.contexts.map((c) => (c.id === id ? { ...c, ...patch } : c)),
+        })),
+      deleteContext: (id) =>
+        set((s) => ({
+          contexts: s.contexts.filter((c) => c.id !== id),
+          tasks: s.tasks.map((t) => ({
+            ...t,
+            contextIds: t.contextIds.filter((cid) => cid !== id),
+          })),
+        })),
+
+      addInboxItem: (text) => {
+        if (!text.trim()) return;
+        const item: InboxItem = { id: newId(), text: text.trim(), createdAt: Date.now() };
+        set((s) => ({ inbox: [item, ...s.inbox] }));
+      },
+      deleteInboxItem: (id) =>
+        set((s) => ({ inbox: s.inbox.filter((i) => i.id !== id) })),
+
+      addSomedayIdea: (text) => {
+        if (!text.trim()) return;
+        const idea: SomedayIdea = { id: newId(), text: text.trim(), createdAt: Date.now() };
+        set((s) => ({ somedayIdeas: [idea, ...s.somedayIdeas] }));
+      },
+      deleteSomedayIdea: (id) =>
+        set((s) => ({ somedayIdeas: s.somedayIdeas.filter((i) => i.id !== id) })),
+
+      markReviewed: () => set({ lastReviewedAt: Date.now() }),
+
+      importData: (data) =>
+        set({
+          projects: data.projects ?? [],
+          tasks: data.tasks ?? [],
+          resources: data.resources ?? [],
+          contexts: data.contexts?.length ? data.contexts : DEFAULT_CONTEXTS,
+          inbox: data.inbox ?? [],
+          somedayIdeas: data.somedayIdeas ?? [],
+          lastReviewedAt: data.lastReviewedAt ?? null,
+        }),
+      clearAll: () => set({ ...initialState }),
+    }),
+    {
+      name: "gtd-app-storage",
+      storage: createJSONStorage(() =>
+        typeof window !== "undefined" ? window.localStorage : noopStorage
+      ),
+      skipHydration: true,
+      partialize: (s) => ({
+        projects: s.projects,
+        tasks: s.tasks,
+        resources: s.resources,
+        contexts: s.contexts,
+        inbox: s.inbox,
+        somedayIdeas: s.somedayIdeas,
+        lastReviewedAt: s.lastReviewedAt,
+      }),
+    }
+  )
+);
