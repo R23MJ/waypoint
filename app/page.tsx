@@ -9,9 +9,7 @@ import AddTaskForm from "@/components/AddTaskForm";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import WaitingPrompt from "@/components/WaitingPrompt";
 import EditTaskSheet from "@/components/EditTaskSheet";
-import TrackableRow from "@/components/TrackableRow";
-import EditTrackableSheet from "@/components/EditTrackableSheet";
-import { ChevronRight, Compass, Flame, ListChecks } from "lucide-react";
+import { ChevronRight, Compass, Flame } from "lucide-react";
 
 function greeting() {
   const h = new Date().getHours();
@@ -25,20 +23,16 @@ export default function NextActionsPage() {
   const projects = useAppStore((s) => s.projects);
   const tasks = useAppStore((s) => s.tasks);
   const contexts = useAppStore((s) => s.contexts);
-  const trackables = useAppStore((s) => s.trackables);
   const displayName = useAppStore((s) => s.displayName);
   const toggleTask = useAppStore((s) => s.toggleTask);
   const deleteTask = useAppStore((s) => s.deleteTask);
   const addTask = useAppStore((s) => s.addTask);
-  const deleteTrackable = useAppStore((s) => s.deleteTrackable);
 
   const [activeContext, setActiveContext] = useState<string | null>(null);
   const [addingStandalone, setAddingStandalone] = useState(false);
   const [waitingPromptFor, setWaitingPromptFor] = useState<string | null>(null);
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
-  const [editingTrackableId, setEditingTrackableId] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
-  const [confirmDeleteTrackableId, setConfirmDeleteTrackableId] = useState<string | null>(null);
 
   const activeProjects = projects.filter((p) => p.status === "active");
   const activeProjectIds = new Set(activeProjects.map((p) => p.id));
@@ -74,8 +68,6 @@ export default function NextActionsPage() {
   const dueCount = tasks.filter((t) => !t.done && (isOverdue(t) || isDueToday(t))).length;
   const waitingCount = waitingTasks(tasks).length;
   const focusTasks = sortByPriorityThenOrder(allAvailable.filter((t) => t.priority === "high")).slice(0, 3);
-
-  const activeTrackables = trackables.filter((tr) => activeProjectIds.has(tr.projectId));
 
   return (
     <div className="max-w-[720px] mx-auto px-5 md:px-8 py-8 pb-28 md:pb-16">
@@ -114,24 +106,6 @@ export default function NextActionsPage() {
               onDelete={() => setConfirmDeleteId(t.id)}
               onSetWaiting={() => setWaitingPromptFor(t.id)}
               onEdit={() => setEditingTaskId(t.id)}
-            />
-          ))}
-        </div>
-      )}
-
-      {activeTrackables.length > 0 && (
-        <div className="mb-6">
-          <div className="flex items-center gap-1.5 mb-2 px-0.5">
-            <ListChecks size={13} className="text-amber" />
-            <h3 className="text-[13px] font-semibold text-text-faint">Today</h3>
-          </div>
-          {activeTrackables.map((tr) => (
-            <TrackableRow
-              key={tr.id}
-              trackable={tr}
-              projectLabel={projects.find((p) => p.id === tr.projectId)?.name}
-              onEdit={() => setEditingTrackableId(tr.id)}
-              onDelete={() => setConfirmDeleteTrackableId(tr.id)}
             />
           ))}
         </div>
@@ -258,7 +232,6 @@ export default function NextActionsPage() {
 
       <WaitingPrompt taskId={waitingPromptFor} onClose={() => setWaitingPromptFor(null)} />
       <EditTaskSheet taskId={editingTaskId} onClose={() => setEditingTaskId(null)} />
-      <EditTrackableSheet trackableId={editingTrackableId} onClose={() => setEditingTrackableId(null)} />
 
       <ConfirmDialog
         open={!!confirmDeleteId}
@@ -268,15 +241,6 @@ export default function NextActionsPage() {
           setConfirmDeleteId(null);
         }}
         onCancel={() => setConfirmDeleteId(null)}
-      />
-      <ConfirmDialog
-        open={!!confirmDeleteTrackableId}
-        message="Remove this trackable? Its logged history goes with it."
-        onConfirm={() => {
-          if (confirmDeleteTrackableId) deleteTrackable(confirmDeleteTrackableId);
-          setConfirmDeleteTrackableId(null);
-        }}
-        onCancel={() => setConfirmDeleteTrackableId(null)}
       />
     </div>
   );

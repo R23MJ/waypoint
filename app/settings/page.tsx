@@ -37,8 +37,6 @@ export default function SettingsPage() {
       contexts: state.contexts,
       inbox: state.inbox,
       somedayIdeas: state.somedayIdeas,
-      trackables: state.trackables,
-      trackableEntries: state.trackableEntries,
       lastReviewedAt: state.lastReviewedAt,
       notificationsEnabled: state.notificationsEnabled,
       lastNotifiedDate: state.lastNotifiedDate,

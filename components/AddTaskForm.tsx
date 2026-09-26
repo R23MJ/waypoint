@@ -24,6 +24,8 @@ export default function AddTaskForm({
       dueDate: string | null;
       priority: Priority;
       recurrence: RecurrenceRule | null;
+      trackTarget: number | null;
+      trackUnit: string;
     }
   ) => void;
   onCancel: () => void;
@@ -37,6 +39,9 @@ export default function AddTaskForm({
   const [priority, setPriority] = useState<Priority>("normal");
   const [recurFreq, setRecurFreq] = useState<RecurrenceFreq | "none">("none");
   const [recurInterval, setRecurInterval] = useState(1);
+  const [tracking, setTracking] = useState(false);
+  const [trackTarget, setTrackTarget] = useState("");
+  const [trackUnit, setTrackUnit] = useState("");
 
   // Which fields the person has set by hand — once touched, typed shorthand
   // stops overwriting that field, so nothing ever fights their explicit choice.
@@ -73,6 +78,8 @@ export default function AddTaskForm({
       dueDate: dueDate || null,
       priority,
       recurrence: recurFreq === "none" ? null : { freq: recurFreq, interval: recurInterval },
+      trackTarget: tracking ? Number(trackTarget) || 0 : null,
+      trackUnit: tracking ? trackUnit.trim() : "",
     });
   }
 
@@ -176,7 +183,7 @@ export default function AddTaskForm({
       )}
 
       <div className="flex gap-3 mb-2.5">
-        <div className="flex-1">
+        <div className="flex-1 min-w-0">
           <div className="text-[11px] text-text-faint mb-1.5">due date (optional — or type it above)</div>
           <input
             type="date"
@@ -185,16 +192,16 @@ export default function AddTaskForm({
               setTouched((t) => ({ ...t, due: true }));
               setDueDate(e.target.value);
             }}
-            className="w-full bg-bg-2 border border-border rounded-md px-2.5 py-1.5 text-[12.5px] text-text-dim"
+            className="w-full min-w-0 bg-bg-2 border border-border rounded-md px-2.5 py-1.5 text-[12.5px] text-text-dim"
           />
         </div>
-        <div className="flex-1">
+        <div className="flex-1 min-w-0">
           <div className="text-[11px] text-text-faint mb-1.5">don&apos;t show until (optional)</div>
           <input
             type="date"
             value={defer}
             onChange={(e) => setDefer(e.target.value)}
-            className="w-full bg-bg-2 border border-border rounded-md px-2.5 py-1.5 text-[12.5px] text-text-dim"
+            className="w-full min-w-0 bg-bg-2 border border-border rounded-md px-2.5 py-1.5 text-[12.5px] text-text-dim"
           />
         </div>
       </div>
@@ -227,7 +234,7 @@ export default function AddTaskForm({
                   setTouched((t) => ({ ...t, recur: true }));
                   setRecurInterval(Math.max(1, Number(e.target.value) || 1));
                 }}
-                className="w-14 bg-bg-2 border border-border rounded-md px-2 py-1.5 text-[12.5px] text-text-dim"
+                className="w-14 flex-shrink-0 bg-bg-2 border border-border rounded-md px-2 py-1.5 text-[12.5px] text-text-dim"
               />
               <span className="text-[11.5px] text-text-faint">
                 {recurFreq === "daily" ? "day(s)" : recurFreq === "weekly" ? "week(s)" : "month(s)"}
@@ -235,6 +242,37 @@ export default function AddTaskForm({
             </>
           )}
         </div>
+      </div>
+
+      <div className="mb-3">
+        <label className="flex items-center gap-2 text-[11px] text-text-faint mb-1.5 cursor-pointer">
+          <input type="checkbox" checked={tracking} onChange={(e) => setTracking(e.target.checked)} className="accent-amber flex-shrink-0" />
+          Track a running number instead of just done/not-done (e.g. calories, reps, pages)
+        </label>
+        {tracking && (
+          <div className="flex gap-2">
+            <input
+              type="number"
+              placeholder="Target (e.g. 4000)"
+              value={trackTarget}
+              onChange={(e) => setTrackTarget(e.target.value)}
+              className="flex-1 min-w-0 bg-bg-2 border border-border rounded-md px-2.5 py-1.5 text-[12.5px] text-text-dim"
+            />
+            <input
+              type="text"
+              placeholder="Unit (e.g. kcal)"
+              value={trackUnit}
+              onChange={(e) => setTrackUnit(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && submit()}
+              className="flex-1 min-w-0 bg-bg-2 border border-border rounded-md px-2.5 py-1.5 text-[12.5px] text-text-dim"
+            />
+          </div>
+        )}
+        {tracking && recurFreq === "none" && (
+          <p className="text-[10.5px] text-text-faint mt-1.5">
+            Tip: pair this with &quot;repeats&quot; above for a daily or weekly running total — otherwise it just tracks once until you check it off.
+          </p>
+        )}
       </div>
 
       <div className="flex gap-2">

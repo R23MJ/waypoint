@@ -40,6 +40,9 @@ export interface Task {
   priority: Priority;
   recurrence: RecurrenceRule | null; // when done, spawns the next occurrence
   checklist: ChecklistItem[]; // lightweight sub-items, not full dependency steps
+  trackTarget: number | null; // set = this step also tracks a running number toward a goal (e.g. 4000 kcal), on top of its normal done/not-done checkbox
+  trackUnit: string; // "kcal", "g", etc — only meaningful when trackTarget is set
+  trackValue: number; // current running total for this occurrence; resets to 0 when a recurring step spawns its next occurrence
   order: number;
   createdAt: number;
 }
@@ -69,29 +72,6 @@ export interface InboxItem {
   createdAt: number;
 }
 
-export type TrackableType = "boolean" | "counter";
-
-export interface Trackable {
-  id: string;
-  projectId: string;
-  name: string; // "Took Creatine", "Calories"
-  type: TrackableType;
-  target: number | null; // counter only, e.g. 4000
-  unit: string; // "kcal", "g", "" for boolean
-  order: number;
-  createdAt: number;
-}
-
-/** One trackable's tally for one calendar day (local date, ISO). For a
- * counter this is the running total added so far that day; for a boolean
- * it's 0 or 1. */
-export interface TrackableEntry {
-  id: string;
-  trackableId: string;
-  date: string;
-  value: number;
-}
-
 export interface SomedayIdea {
   id: string;
   text: string;
@@ -105,8 +85,6 @@ export interface AppState {
   contexts: Context[];
   inbox: InboxItem[];
   somedayIdeas: SomedayIdea[];
-  trackables: Trackable[];
-  trackableEntries: TrackableEntry[];
   lastReviewedAt: number | null;
   notificationsEnabled: boolean;
   lastNotifiedDate: string | null; // ISO date, so we notify at most once/day

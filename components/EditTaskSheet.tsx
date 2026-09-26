@@ -27,6 +27,9 @@ function EditTaskBody({ taskId, onClose }: { taskId: string; onClose: () => void
   const [deps, setDeps] = useState<string[]>(task?.dependsOn ?? []);
   const [recurFreq, setRecurFreq] = useState<RecurrenceFreq | "none">(task?.recurrence?.freq ?? "none");
   const [recurInterval, setRecurInterval] = useState(task?.recurrence?.interval ?? 1);
+  const [tracking, setTracking] = useState(task?.trackTarget !== null && task?.trackTarget !== undefined);
+  const [trackTarget, setTrackTarget] = useState(task?.trackTarget != null ? String(task.trackTarget) : "");
+  const [trackUnit, setTrackUnit] = useState(task?.trackUnit ?? "");
 
   if (!task) return null;
 
@@ -48,6 +51,8 @@ function EditTaskBody({ taskId, onClose }: { taskId: string; onClose: () => void
       deferUntil: defer || null,
       dependsOn: deps,
       recurrence: recurFreq === "none" ? null : { freq: recurFreq, interval: recurInterval },
+      trackTarget: tracking ? Number(trackTarget) || 0 : null,
+      trackUnit: tracking ? trackUnit.trim() : "",
     });
     onClose();
   }
@@ -124,22 +129,22 @@ function EditTaskBody({ taskId, onClose }: { taskId: string; onClose: () => void
       )}
 
       <div className="flex gap-3 mb-3">
-        <div className="flex-1">
+        <div className="flex-1 min-w-0">
           <div className="text-[11px] text-text-faint mb-1.5">due date</div>
           <input
             type="date"
             value={dueDate}
             onChange={(e) => setDueDate(e.target.value)}
-            className="w-full bg-bg-2 border border-border rounded-md px-2.5 py-1.5 text-[12.5px] text-text-dim"
+            className="w-full min-w-0 bg-bg-2 border border-border rounded-md px-2.5 py-1.5 text-[12.5px] text-text-dim"
           />
         </div>
-        <div className="flex-1">
+        <div className="flex-1 min-w-0">
           <div className="text-[11px] text-text-faint mb-1.5">don&apos;t show until</div>
           <input
             type="date"
             value={defer}
             onChange={(e) => setDefer(e.target.value)}
-            className="w-full bg-bg-2 border border-border rounded-md px-2.5 py-1.5 text-[12.5px] text-text-dim"
+            className="w-full min-w-0 bg-bg-2 border border-border rounded-md px-2.5 py-1.5 text-[12.5px] text-text-dim"
           />
         </div>
       </div>
@@ -166,7 +171,7 @@ function EditTaskBody({ taskId, onClose }: { taskId: string; onClose: () => void
                 max={365}
                 value={recurInterval}
                 onChange={(e) => setRecurInterval(Math.max(1, Number(e.target.value) || 1))}
-                className="w-14 bg-bg-2 border border-border rounded-md px-2 py-1.5 text-[12.5px] text-text-dim"
+                className="w-14 flex-shrink-0 bg-bg-2 border border-border rounded-md px-2 py-1.5 text-[12.5px] text-text-dim"
               />
               <span className="text-[11.5px] text-text-faint">
                 {recurFreq === "daily" ? "day(s)" : recurFreq === "weekly" ? "week(s)" : "month(s)"}
@@ -174,6 +179,32 @@ function EditTaskBody({ taskId, onClose }: { taskId: string; onClose: () => void
             </>
           )}
         </div>
+      </div>
+
+      <div className="mb-4">
+        <label className="flex items-center gap-2 text-[11px] text-text-faint mb-1.5 cursor-pointer">
+          <input type="checkbox" checked={tracking} onChange={(e) => setTracking(e.target.checked)} className="accent-amber flex-shrink-0" />
+          Track a running number instead of just done/not-done
+        </label>
+        {tracking && (
+          <div className="flex gap-2">
+            <input
+              type="number"
+              placeholder="Target"
+              value={trackTarget}
+              onChange={(e) => setTrackTarget(e.target.value)}
+              className="flex-1 min-w-0 bg-bg-2 border border-border rounded-md px-2.5 py-1.5 text-[12.5px] text-text-dim"
+            />
+            <input
+              type="text"
+              placeholder="Unit"
+              value={trackUnit}
+              onChange={(e) => setTrackUnit(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && save()}
+              className="flex-1 min-w-0 bg-bg-2 border border-border rounded-md px-2.5 py-1.5 text-[12.5px] text-text-dim"
+            />
+          </div>
+        )}
       </div>
 
       <div className="flex gap-2">

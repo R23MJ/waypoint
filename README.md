@@ -196,3 +196,51 @@ Every step now has a pencil icon opening an edit sheet (title, priority,
 context, due date, defer date, dependencies, recurrence) —
 `components/EditTaskSheet.tsx`. Previously the only way to touch a step
 after creating it was to delete and re-add it.
+
+## Trackables unified into Tasks (no separate model)
+
+The dedicated Trackable/TrackableEntry data model from the previous round is
+gone. A "trackable" is now just a **task** — specifically, a recurring task
+(optionally) carrying a running number:
+
+- **"Took Creatine" (yes/no daily)** → a plain recurring task, `recurrence:
+  {freq: "daily", interval: 1}`. This is exactly what recurring tasks already
+  were — no new concept needed.
+- **"Calories" (0/4000 kcal)** → a recurring task that also sets
+  `trackTarget: 4000, trackUnit: "kcal"`. The checkbox still means "done for
+  this period"; the progress bar + "+add" control underneath is a
+  supplementary way to log a number against it, the same way checklists are
+  an optional supplementary sub-list.
+
+This means: no separate "Trackables" section in a project anymore — a
+tracked task is created via the normal "+ Add a step" form (there's a
+"Track a running number" checkbox that reveals target/unit fields) or edited
+via the same step-edit sheet. It sorts and filters through the exact same
+next-actions logic as everything else. Weekly or monthly running totals now
+work for free, since they're just recurrence — set `recurrence` to weekly
+and it's a weekly count.
+
+**Behavior change worth knowing:** because this is a real recurring task now,
+a period only advances when you check it off — there's no silent daily
+auto-reset independent of completion. If you skip a day on "Took Creatine"
+without checking it off, it stays there as that (now-stale) occurrence until
+you complete it, rather than quietly refreshing to a new blank checkbox at
+midnight. This is the standard, predictable behavior for every recurring
+task in the app; it just reads differently for a daily habit than a
+dedicated habit-tracker would.
+
+A one-time migration (`migrateLegacyTrackables` in `lib/store.ts`, storage
+version 5) converts any trackables saved under the old model into equivalent
+recurring tasks, carrying today's logged value forward. Full historical
+entries (`TrackableEntry` rows) are not preserved — only today's number.
+
+## Mobile form overflow — fixed
+
+Both reported issues (add-trackable's unit field pushed off-screen, and a
+focus glow clipped at the screen edge) traced to the same root cause: a
+`<input>` in a `flex-1` row defaults to a browser-imposed minimum width
+(~150-170px, from the implicit `size="20"` UA default) unless you explicitly
+set `min-width: 0`. Two inputs side-by-side in a narrow sheet would refuse to
+shrink, overflow the sheet's own padding, and get clipped right at the
+screen edge. Added `min-w-0` to every paired-input row across
+`AddTaskForm.tsx` and `EditTaskSheet.tsx`.

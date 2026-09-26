@@ -16,9 +16,6 @@ import {
   ResourceType,
   SomedayIdea,
   Task,
-  Trackable,
-  TrackableEntry,
-  TrackableType,
 } from "./types";
 
 const DEFAULT_CONTEXTS: Context[] = [
@@ -36,8 +33,6 @@ const initialState: AppState = {
   contexts: DEFAULT_CONTEXTS,
   inbox: [],
   somedayIdeas: [],
-  trackables: [],
-  trackableEntries: [],
   lastReviewedAt: null,
   notificationsEnabled: false,
   lastNotifiedDate: null,
@@ -72,9 +67,39 @@ function withTaskDefaults(t: Partial<Task> & { id: string }): Task {
     priority: t.priority ?? "normal",
     recurrence: t.recurrence ?? null,
     checklist: t.checklist ?? [],
+    trackTarget: t.trackTarget ?? null,
+    trackUnit: t.trackUnit ?? "",
+    trackValue: t.trackValue ?? 0,
     order: t.order ?? 0,
     createdAt: t.createdAt ?? Date.now(),
   };
+}
+
+/** v4 had a separate Trackable/TrackableEntry model. Folding "trackable-ness"
+ * into Task (recurrence + trackTarget) means any trackable a person already
+ * created needs to become an equivalent recurring task, not just vanish. */
+function migrateLegacyTrackables(persisted: {
+  trackables?: { id: string; projectId: string; name: string; type: "boolean" | "counter"; target: number | null; unit: string; createdAt?: number }[];
+  trackableEntries?: { trackableId: string; date: string; value: number }[];
+}): Task[] {
+  const trackables = persisted.trackables ?? [];
+  const entries = persisted.trackableEntries ?? [];
+  const today = todayISO();
+  return trackables.map((tr) => {
+    const todayValue = entries.find((e) => e.trackableId === tr.id && e.date === today)?.value ?? 0;
+    return withTaskDefaults({
+      id: newId(),
+      projectId: tr.projectId,
+      title: tr.name,
+      recurrence: { freq: "daily", interval: 1 },
+      trackTarget: tr.type === "counter" ? tr.target : null,
+      trackUnit: tr.type === "counter" ? tr.unit : "",
+      trackValue: tr.type === "counter" ? todayValue : 0,
+      done: tr.type === "boolean" ? todayValue >= 1 : false,
+      order: 0,
+      createdAt: tr.createdAt ?? Date.now(),
+    });
+  });
 }
 
 interface Store extends AppState {
@@ -91,7 +116,15 @@ interface Store extends AppState {
     opts?: Partial<
       Pick<
         Task,
-        "dependsOn" | "contextIds" | "deferUntil" | "notes" | "dueDate" | "priority" | "recurrence"
+        | "dependsOn"
+        | "contextIds"
+        | "deferUntil"
+        | "notes"
+        | "dueDate"
+        | "priority"
+        | "recurrence"
+        | "trackTarget"
+        | "trackUnit"
       >
     >
   ) => string;
@@ -101,6 +134,8 @@ interface Store extends AppState {
   setWaiting: (id: string, waitingOn: string | null) => void;
   reorderTask: (id: string, direction: "up" | "down") => void;
   reorderTasks: (orderedIds: string[]) => void;
+  setTaskTrackValue: (id: string, value: number) => void;
+  addTaskTrackAmount: (id: string, amount: number) => void;
 
   addChecklistItem: (taskId: string, text: string) => void;
   toggleChecklistItem: (taskId: string, itemId: string) => void;
@@ -125,12 +160,6 @@ interface Store extends AppState {
 
   addSomedayIdea: (text: string) => void;
   deleteSomedayIdea: (id: string) => void;
-
-  addTrackable: (projectId: string, name: string, type: TrackableType, target: number | null, unit: string) => void;
-  updateTrackable: (id: string, patch: Partial<Trackable>) => void;
-  deleteTrackable: (id: string) => void;
-  setTrackableToday: (id: string, date: string, value: number) => void;
-  addTrackableAmount: (id: string, date: string, amount: number) => void;
 
   markReviewed: () => void;
 
@@ -171,10 +200,6 @@ export const useAppStore = create<Store>()(
           projects: s.projects.filter((p) => p.id !== id),
           tasks: s.tasks.filter((t) => t.projectId !== id),
           resources: s.resources.filter((r) => r.projectId !== id),
-          trackables: s.trackables.filter((t) => t.projectId !== id),
-          trackableEntries: s.trackableEntries.filter(
-            (e) => !s.trackables.some((t) => t.id === e.trackableId && t.projectId === id)
-          ),
         })),
 
       addTask: (projectId, title, opts) => {
@@ -192,6 +217,8 @@ export const useAppStore = create<Store>()(
           dueDate: opts?.dueDate ?? null,
           priority: opts?.priority ?? "normal",
           recurrence: opts?.recurrence ?? null,
+          trackTarget: opts?.trackTarget ?? null,
+          trackUnit: opts?.trackUnit ?? "",
           order: maxOrder + 1,
           createdAt: Date.now(),
         });
@@ -208,7 +235,9 @@ export const useAppStore = create<Store>()(
         const completing = !task.done;
 
         // Completing a recurring task spawns its next occurrence instead of
-        // just disappearing — that's the whole point of "recurring".
+        // just disappearing — that's the whole point of "recurring". A
+        // tracked running total (e.g. calories) resets to 0 on the new
+        // occurrence right alongside the checklist.
         if (completing && task.recurrence) {
           const anchor = task.dueDate ?? todayISO();
           const nextDue = nextOccurrenceDate(task.recurrence, anchor);
@@ -221,6 +250,7 @@ export const useAppStore = create<Store>()(
             waitingSince: null,
             dueDate: nextDue,
             checklist: task.checklist.map((c) => ({ ...c, done: false })),
+            trackValue: 0,
             createdAt: Date.now(),
           });
           set((s) => ({
@@ -296,6 +326,16 @@ export const useAppStore = create<Store>()(
             tasks: s.tasks.map((t) => (orderMap.has(t.id) ? { ...t, order: orderMap.get(t.id)! } : t)),
           };
         }),
+      setTaskTrackValue: (id, value) =>
+        set((s) => ({
+          tasks: s.tasks.map((t) => (t.id === id ? { ...t, trackValue: Math.max(0, value) } : t)),
+        })),
+      addTaskTrackAmount: (id, amount) =>
+        set((s) => ({
+          tasks: s.tasks.map((t) =>
+            t.id === id ? { ...t, trackValue: Math.max(0, t.trackValue + amount) } : t
+          ),
+        })),
 
       addChecklistItem: (taskId, text) => {
         if (!text.trim()) return;
@@ -380,55 +420,6 @@ export const useAppStore = create<Store>()(
       deleteSomedayIdea: (id) =>
         set((s) => ({ somedayIdeas: s.somedayIdeas.filter((i) => i.id !== id) })),
 
-      addTrackable: (projectId, name, type, target, unit) => {
-        if (!name.trim()) return;
-        const siblings = get().trackables.filter((t) => t.projectId === projectId);
-        const maxOrder = siblings.reduce((m, t) => Math.max(m, t.order), 0);
-        const trackable: Trackable = {
-          id: newId(),
-          projectId,
-          name: name.trim(),
-          type,
-          target: type === "counter" ? target : null,
-          unit: type === "counter" ? unit.trim() : "",
-          order: maxOrder + 1,
-          createdAt: Date.now(),
-        };
-        set((s) => ({ trackables: [...s.trackables, trackable] }));
-      },
-      updateTrackable: (id, patch) =>
-        set((s) => ({
-          trackables: s.trackables.map((t) => (t.id === id ? { ...t, ...patch } : t)),
-        })),
-      deleteTrackable: (id) =>
-        set((s) => ({
-          trackables: s.trackables.filter((t) => t.id !== id),
-          trackableEntries: s.trackableEntries.filter((e) => e.trackableId !== id),
-        })),
-      setTrackableToday: (id, date, value) =>
-        set((s) => {
-          const existing = s.trackableEntries.find((e) => e.trackableId === id && e.date === date);
-          if (existing) {
-            return {
-              trackableEntries: s.trackableEntries.map((e) => (e.id === existing.id ? { ...e, value } : e)),
-            };
-          }
-          const entry: TrackableEntry = { id: newId(), trackableId: id, date, value };
-          return { trackableEntries: [...s.trackableEntries, entry] };
-        }),
-      addTrackableAmount: (id, date, amount) =>
-        set((s) => {
-          const existing = s.trackableEntries.find((e) => e.trackableId === id && e.date === date);
-          if (existing) {
-            const value = Math.max(0, existing.value + amount);
-            return {
-              trackableEntries: s.trackableEntries.map((e) => (e.id === existing.id ? { ...e, value } : e)),
-            };
-          }
-          const entry: TrackableEntry = { id: newId(), trackableId: id, date, value: Math.max(0, amount) };
-          return { trackableEntries: [...s.trackableEntries, entry] };
-        }),
-
       markReviewed: () => set({ lastReviewedAt: Date.now() }),
 
       setNotificationsEnabled: (v) => set({ notificationsEnabled: v }),
@@ -443,8 +434,6 @@ export const useAppStore = create<Store>()(
           contexts: data.contexts?.length ? data.contexts : DEFAULT_CONTEXTS,
           inbox: data.inbox ?? [],
           somedayIdeas: data.somedayIdeas ?? [],
-          trackables: data.trackables ?? [],
-          trackableEntries: data.trackableEntries ?? [],
           lastReviewedAt: data.lastReviewedAt ?? null,
           notificationsEnabled: data.notificationsEnabled ?? false,
           lastNotifiedDate: data.lastNotifiedDate ?? null,
@@ -454,7 +443,7 @@ export const useAppStore = create<Store>()(
     }),
     {
       name: "gtd-app-storage",
-      version: 4,
+      version: 5,
       storage: createJSONStorage(() =>
         typeof window !== "undefined" ? window.localStorage : noopStorage
       ),
@@ -466,23 +455,23 @@ export const useAppStore = create<Store>()(
         contexts: s.contexts,
         inbox: s.inbox,
         somedayIdeas: s.somedayIdeas,
-        trackables: s.trackables,
-        trackableEntries: s.trackableEntries,
         lastReviewedAt: s.lastReviewedAt,
         notificationsEnabled: s.notificationsEnabled,
         lastNotifiedDate: s.lastNotifiedDate,
         displayName: s.displayName,
       }),
       migrate: (persisted) => {
-        const p = persisted as AppState;
+        const p = persisted as AppState & {
+          trackables?: { id: string; projectId: string; name: string; type: "boolean" | "counter"; target: number | null; unit: string; createdAt?: number }[];
+          trackableEntries?: { trackableId: string; date: string; value: number }[];
+        };
+        const migratedTasks = migrateLegacyTrackables(p);
         return {
           ...p,
-          tasks: (p.tasks ?? []).map(withTaskDefaults),
+          tasks: [...(p.tasks ?? []).map(withTaskDefaults), ...migratedTasks],
           notificationsEnabled: p.notificationsEnabled ?? false,
           lastNotifiedDate: p.lastNotifiedDate ?? null,
           displayName: p.displayName ?? "",
-          trackables: p.trackables ?? [],
-          trackableEntries: p.trackableEntries ?? [],
         };
       },
     }

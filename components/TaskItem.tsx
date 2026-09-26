@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Task, Context } from "@/lib/types";
 import { isBlockedBy, isWaiting, isDeferred, isOverdue, isDueToday, daysSince, describeRecurrence } from "@/lib/gtd";
 import { useAppStore } from "@/lib/store";
-import { Check, X, Clock, Repeat, Flag, ChevronDown, ChevronRight, Plus, Pencil } from "lucide-react";
+import { Check, X, Clock, Repeat, Flag, ChevronDown, ChevronRight, Plus, Pencil, Minus } from "lucide-react";
 import SwipeableRow from "@/components/SwipeableRow";
 
 export default function TaskItem({
@@ -33,9 +33,12 @@ export default function TaskItem({
   const addChecklistItem = useAppStore((s) => s.addChecklistItem);
   const toggleChecklistItem = useAppStore((s) => s.toggleChecklistItem);
   const deleteChecklistItem = useAppStore((s) => s.deleteChecklistItem);
+  const addTaskTrackAmount = useAppStore((s) => s.addTaskTrackAmount);
 
   const [checklistOpen, setChecklistOpen] = useState(false);
   const [newItemText, setNewItemText] = useState("");
+  const [showAddAmount, setShowAddAmount] = useState(false);
+  const [amount, setAmount] = useState("");
 
   const blockedBy = isBlockedBy(task, allTasks);
   const blocked = blockedBy.length > 0 && !task.done;
@@ -114,6 +117,71 @@ export default function TaskItem({
                 </span>
               )}
             </div>
+
+            {task.trackTarget !== null && (
+              <div className="mt-2">
+                <div className="flex items-center gap-2.5 mb-1.5">
+                  <div className="flex-1 min-w-0 h-1.5 rounded-full bg-surface-2 overflow-hidden">
+                    <div
+                      className="h-full bg-amber rounded-full transition-all"
+                      style={{ width: `${Math.min(100, Math.round((task.trackValue / (task.trackTarget || 1)) * 100))}%` }}
+                    />
+                  </div>
+                  <span className="text-[11px] text-text-faint flex-shrink-0 whitespace-nowrap">
+                    {task.trackValue}/{task.trackTarget} {task.trackUnit}
+                  </span>
+                </div>
+                {showAddAmount ? (
+                  <div className="flex gap-1.5">
+                    <input
+                      type="number"
+                      autoFocus
+                      value={amount}
+                      onChange={(e) => setAmount(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          addTaskTrackAmount(task.id, Number(amount) || 0);
+                          setAmount("");
+                          setShowAddAmount(false);
+                        }
+                      }}
+                      placeholder={task.trackUnit || "amount"}
+                      className="flex-1 min-w-0 bg-bg-2 border border-border rounded-lg px-2.5 py-1.5 text-[12.5px]"
+                    />
+                    <button
+                      onClick={() => {
+                        addTaskTrackAmount(task.id, Number(amount) || 0);
+                        setAmount("");
+                        setShowAddAmount(false);
+                      }}
+                      className="px-2.5 py-1.5 rounded-lg text-[12px] font-semibold bg-amber text-[#241d12] flex-shrink-0"
+                    >
+                      <Plus size={13} />
+                    </button>
+                    {task.trackValue > 0 && (
+                      <button
+                        onClick={() => {
+                          addTaskTrackAmount(task.id, -(Number(amount) || 0));
+                          setAmount("");
+                          setShowAddAmount(false);
+                        }}
+                        title="Subtract instead"
+                        className="px-2.5 py-1.5 rounded-lg text-[12px] font-semibold bg-surface-2 text-text-dim flex-shrink-0"
+                      >
+                        <Minus size={13} />
+                      </button>
+                    )}
+                    <button onClick={() => setShowAddAmount(false)} className="px-2 py-1.5 text-[12px] text-text-faint flex-shrink-0">
+                      Cancel
+                    </button>
+                  </div>
+                ) : (
+                  <button onClick={() => setShowAddAmount(true)} className="text-[11px] text-amber hover:opacity-80 transition-opacity">
+                    + add {task.trackUnit || "amount"}
+                  </button>
+                )}
+              </div>
+            )}
           </div>
           <div className="flex items-center gap-0.5 flex-shrink-0">
             {onEdit && (

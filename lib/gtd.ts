@@ -117,7 +117,3 @@ export function isStalledProject(project: Project, tasks: Task[]): boolean {
 export function daysSince(ts: number): number {
   return Math.floor((Date.now() - ts) / (1000 * 60 * 60 * 24));
 }
-
-export function trackableValueOn(entries: import("./types").TrackableEntry[], trackableId: string, date: string): number {
-  return entries.find((e) => e.trackableId === trackableId && e.date === date)?.value ?? 0;
-}
