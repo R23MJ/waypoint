@@ -1,0 +1,29 @@
+name: CI
+
+# Fast sanity checks only — lint + type errors. The full `next build` is
+# left to Vercel's own build step on deploy, so this isn't duplicated work,
+# just an earlier/cheaper signal (and one that runs on PRs too, before
+# anything reaches Vercel).
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Type check
+        run: npm run typecheck

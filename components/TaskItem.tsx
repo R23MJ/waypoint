@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Task, Context } from "@/lib/types";
 import { isBlockedBy, isWaiting, isDeferred, isOverdue, isDueToday, daysSince, describeRecurrence } from "@/lib/gtd";
 import { useAppStore } from "@/lib/store";
-import { Check, X, Clock, Repeat, Flag, ChevronDown, ChevronRight, Plus } from "lucide-react";
+import { Check, X, Clock, Repeat, Flag, ChevronDown, ChevronRight, Plus, Pencil } from "lucide-react";
 import SwipeableRow from "@/components/SwipeableRow";
 
 export default function TaskItem({
@@ -15,6 +15,7 @@ export default function TaskItem({
   onToggle,
   onDelete,
   onSetWaiting,
+  onEdit,
   dragHandle,
   children,
 }: {
@@ -25,6 +26,7 @@ export default function TaskItem({
   onToggle: () => void;
   onDelete: () => void;
   onSetWaiting?: () => void;
+  onEdit?: () => void;
   dragHandle?: React.ReactNode;
   children?: React.ReactNode;
 }) {
@@ -53,10 +55,11 @@ export default function TaskItem({
   return (
     <SwipeableRow onDelete={onDelete} className="mb-2">
       <div
-        className={`bg-surface border rounded-2xl px-3.5 py-3 ${
+        className={`bg-surface border px-3.5 py-3 ${
           task.priority === "high" && !task.done ? "border-rust/50" : "border-border-soft"
-        } ${task.done || blocked || waiting || deferred ? "opacity-70" : ""}`}
+        }`}
       >
+        <div className={task.done || blocked || waiting || deferred ? "opacity-70" : ""}>
         <div className="flex items-start gap-2.5">
           <button
             onClick={onToggle}
@@ -113,6 +116,15 @@ export default function TaskItem({
             </div>
           </div>
           <div className="flex items-center gap-0.5 flex-shrink-0">
+            {onEdit && (
+              <button
+                onClick={onEdit}
+                title="Edit step"
+                className="p-1.5 rounded-md text-text-faint hover:bg-surface-2 hover:text-text-dim transition-colors"
+              >
+                <Pencil size={13} />
+              </button>
+            )}
             {onSetWaiting && !task.done && (
               <button
                 onClick={onSetWaiting}
@@ -206,6 +218,7 @@ export default function TaskItem({
         </div>
 
         {children}
+        </div>
       </div>
     </SwipeableRow>
   );

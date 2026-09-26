@@ -16,6 +16,9 @@ import {
   ResourceType,
   SomedayIdea,
   Task,
+  Trackable,
+  TrackableEntry,
+  TrackableType,
 } from "./types";
 
 const DEFAULT_CONTEXTS: Context[] = [
@@ -33,6 +36,8 @@ const initialState: AppState = {
   contexts: DEFAULT_CONTEXTS,
   inbox: [],
   somedayIdeas: [],
+  trackables: [],
+  trackableEntries: [],
   lastReviewedAt: null,
   notificationsEnabled: false,
   lastNotifiedDate: null,
@@ -121,6 +126,12 @@ interface Store extends AppState {
   addSomedayIdea: (text: string) => void;
   deleteSomedayIdea: (id: string) => void;
 
+  addTrackable: (projectId: string, name: string, type: TrackableType, target: number | null, unit: string) => void;
+  updateTrackable: (id: string, patch: Partial<Trackable>) => void;
+  deleteTrackable: (id: string) => void;
+  setTrackableToday: (id: string, date: string, value: number) => void;
+  addTrackableAmount: (id: string, date: string, amount: number) => void;
+
   markReviewed: () => void;
 
   setNotificationsEnabled: (v: boolean) => void;
@@ -160,6 +171,10 @@ export const useAppStore = create<Store>()(
           projects: s.projects.filter((p) => p.id !== id),
           tasks: s.tasks.filter((t) => t.projectId !== id),
           resources: s.resources.filter((r) => r.projectId !== id),
+          trackables: s.trackables.filter((t) => t.projectId !== id),
+          trackableEntries: s.trackableEntries.filter(
+            (e) => !s.trackables.some((t) => t.id === e.trackableId && t.projectId === id)
+          ),
         })),
 
       addTask: (projectId, title, opts) => {
@@ -365,6 +380,55 @@ export const useAppStore = create<Store>()(
       deleteSomedayIdea: (id) =>
         set((s) => ({ somedayIdeas: s.somedayIdeas.filter((i) => i.id !== id) })),
 
+      addTrackable: (projectId, name, type, target, unit) => {
+        if (!name.trim()) return;
+        const siblings = get().trackables.filter((t) => t.projectId === projectId);
+        const maxOrder = siblings.reduce((m, t) => Math.max(m, t.order), 0);
+        const trackable: Trackable = {
+          id: newId(),
+          projectId,
+          name: name.trim(),
+          type,
+          target: type === "counter" ? target : null,
+          unit: type === "counter" ? unit.trim() : "",
+          order: maxOrder + 1,
+          createdAt: Date.now(),
+        };
+        set((s) => ({ trackables: [...s.trackables, trackable] }));
+      },
+      updateTrackable: (id, patch) =>
+        set((s) => ({
+          trackables: s.trackables.map((t) => (t.id === id ? { ...t, ...patch } : t)),
+        })),
+      deleteTrackable: (id) =>
+        set((s) => ({
+          trackables: s.trackables.filter((t) => t.id !== id),
+          trackableEntries: s.trackableEntries.filter((e) => e.trackableId !== id),
+        })),
+      setTrackableToday: (id, date, value) =>
+        set((s) => {
+          const existing = s.trackableEntries.find((e) => e.trackableId === id && e.date === date);
+          if (existing) {
+            return {
+              trackableEntries: s.trackableEntries.map((e) => (e.id === existing.id ? { ...e, value } : e)),
+            };
+          }
+          const entry: TrackableEntry = { id: newId(), trackableId: id, date, value };
+          return { trackableEntries: [...s.trackableEntries, entry] };
+        }),
+      addTrackableAmount: (id, date, amount) =>
+        set((s) => {
+          const existing = s.trackableEntries.find((e) => e.trackableId === id && e.date === date);
+          if (existing) {
+            const value = Math.max(0, existing.value + amount);
+            return {
+              trackableEntries: s.trackableEntries.map((e) => (e.id === existing.id ? { ...e, value } : e)),
+            };
+          }
+          const entry: TrackableEntry = { id: newId(), trackableId: id, date, value: Math.max(0, amount) };
+          return { trackableEntries: [...s.trackableEntries, entry] };
+        }),
+
       markReviewed: () => set({ lastReviewedAt: Date.now() }),
 
       setNotificationsEnabled: (v) => set({ notificationsEnabled: v }),
@@ -379,6 +443,8 @@ export const useAppStore = create<Store>()(
           contexts: data.contexts?.length ? data.contexts : DEFAULT_CONTEXTS,
           inbox: data.inbox ?? [],
           somedayIdeas: data.somedayIdeas ?? [],
+          trackables: data.trackables ?? [],
+          trackableEntries: data.trackableEntries ?? [],
           lastReviewedAt: data.lastReviewedAt ?? null,
           notificationsEnabled: data.notificationsEnabled ?? false,
           lastNotifiedDate: data.lastNotifiedDate ?? null,
@@ -388,7 +454,7 @@ export const useAppStore = create<Store>()(
     }),
     {
       name: "gtd-app-storage",
-      version: 3,
+      version: 4,
       storage: createJSONStorage(() =>
         typeof window !== "undefined" ? window.localStorage : noopStorage
       ),
@@ -400,6 +466,8 @@ export const useAppStore = create<Store>()(
         contexts: s.contexts,
         inbox: s.inbox,
         somedayIdeas: s.somedayIdeas,
+        trackables: s.trackables,
+        trackableEntries: s.trackableEntries,
         lastReviewedAt: s.lastReviewedAt,
         notificationsEnabled: s.notificationsEnabled,
         lastNotifiedDate: s.lastNotifiedDate,
@@ -413,6 +481,8 @@ export const useAppStore = create<Store>()(
           notificationsEnabled: p.notificationsEnabled ?? false,
           lastNotifiedDate: p.lastNotifiedDate ?? null,
           displayName: p.displayName ?? "",
+          trackables: p.trackables ?? [],
+          trackableEntries: p.trackableEntries ?? [],
         };
       },
     }

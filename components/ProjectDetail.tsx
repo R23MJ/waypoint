@@ -8,6 +8,10 @@ import TaskItem from "@/components/TaskItem";
 import AddTaskForm from "@/components/AddTaskForm";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import WaitingPrompt from "@/components/WaitingPrompt";
+import EditTaskSheet from "@/components/EditTaskSheet";
+import TrackableRow from "@/components/TrackableRow";
+import AddTrackableForm from "@/components/AddTrackableForm";
+import EditTrackableSheet from "@/components/EditTrackableSheet";
 import { ResourceChip, ResourceCard, ResourceForm } from "@/components/Resources";
 import { ChevronDown, ChevronRight, GripVertical, ArrowLeft } from "lucide-react";
 import {
@@ -35,6 +39,8 @@ export default function ProjectDetail({
   const tasks = useAppStore((s) => s.tasks);
   const resources = useAppStore((s) => s.resources);
   const contexts = useAppStore((s) => s.contexts);
+  const allTrackables = useAppStore((s) => s.trackables);
+  const trackables = allTrackables.filter((t) => t.projectId === projectId).sort((a, b) => a.order - b.order);
 
   const updateProject = useAppStore((s) => s.updateProject);
   const deleteProject = useAppStore((s) => s.deleteProject);
@@ -44,14 +50,20 @@ export default function ProjectDetail({
   const addResource = useAppStore((s) => s.addResource);
   const deleteResource = useAppStore((s) => s.deleteResource);
   const reorderTasks = useAppStore((s) => s.reorderTasks);
+  const addTrackable = useAppStore((s) => s.addTrackable);
+  const deleteTrackable = useAppStore((s) => s.deleteTrackable);
 
   const [addingTask, setAddingTask] = useState(false);
   const [showDone, setShowDone] = useState(false);
   const [addingGeneralRes, setAddingGeneralRes] = useState(false);
+  const [addingTrackable, setAddingTrackable] = useState(false);
   const [resFormForTask, setResFormForTask] = useState<string | null>(null);
   const [confirmDeleteTaskId, setConfirmDeleteTaskId] = useState<string | null>(null);
   const [confirmDeleteProject, setConfirmDeleteProject] = useState(false);
+  const [confirmDeleteTrackableId, setConfirmDeleteTrackableId] = useState<string | null>(null);
   const [waitingPromptFor, setWaitingPromptFor] = useState<string | null>(null);
+  const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
+  const [editingTrackableId, setEditingTrackableId] = useState<string | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -110,6 +122,7 @@ export default function ProjectDetail({
         onToggle={() => toggleTask(t.id)}
         onDelete={() => setConfirmDeleteTaskId(t.id)}
         onSetWaiting={() => setWaitingPromptFor(t.id)}
+        onEdit={() => setEditingTaskId(t.id)}
       >
         {tRes.length > 0 && (
           <div className="flex flex-wrap gap-1.5 mt-2.5 ml-[26px]">
@@ -197,6 +210,44 @@ export default function ProjectDetail({
         }}
         className="w-full bg-surface border border-border-soft rounded-xl px-3.5 py-3 text-[13.5px] text-text-dim min-h-[46px] resize-y mb-7 focus:outline-none focus:border-border transition-colors"
       />
+
+      {/* Trackables — daily habits and running totals, e.g. "Took Creatine" or "0/4000 kcal" */}
+      {(trackables.length > 0 || addingTrackable) && (
+        <Section title="Today" count={trackables.length}>
+          {trackables.map((tr) => (
+            <TrackableRow
+              key={tr.id}
+              trackable={tr}
+              onEdit={() => setEditingTrackableId(tr.id)}
+              onDelete={() => setConfirmDeleteTrackableId(tr.id)}
+            />
+          ))}
+          {addingTrackable ? (
+            <AddTrackableForm
+              onSave={(name, type, target, unit) => {
+                addTrackable(project.id, name, type, target, unit);
+                setAddingTrackable(false);
+              }}
+              onCancel={() => setAddingTrackable(false)}
+            />
+          ) : (
+            <button
+              onClick={() => setAddingTrackable(true)}
+              className="w-full text-left border border-dashed border-border rounded-2xl px-4 py-3 text-[13.5px] text-text-faint hover:text-text-dim hover:border-text-faint mt-1.5 transition-colors"
+            >
+              + Track something daily
+            </button>
+          )}
+        </Section>
+      )}
+      {trackables.length === 0 && !addingTrackable && (
+        <button
+          onClick={() => setAddingTrackable(true)}
+          className="w-full text-left border border-dashed border-border rounded-2xl px-4 py-3 text-[13.5px] text-text-faint hover:text-text-dim hover:border-text-faint mb-1 transition-colors"
+        >
+          + Track something daily (a habit, or a running total like calories)
+        </button>
+      )}
 
       {/* Next steps — drag to reorder */}
       <Section title="Next steps" count={next.length}>
@@ -286,6 +337,17 @@ export default function ProjectDetail({
       </Section>
 
       <WaitingPrompt taskId={waitingPromptFor} onClose={() => setWaitingPromptFor(null)} />
+      <EditTaskSheet taskId={editingTaskId} onClose={() => setEditingTaskId(null)} />
+      <EditTrackableSheet trackableId={editingTrackableId} onClose={() => setEditingTrackableId(null)} />
+      <ConfirmDialog
+        open={!!confirmDeleteTrackableId}
+        message="Remove this trackable? Its logged history goes with it."
+        onConfirm={() => {
+          if (confirmDeleteTrackableId) deleteTrackable(confirmDeleteTrackableId);
+          setConfirmDeleteTrackableId(null);
+        }}
+        onCancel={() => setConfirmDeleteTrackableId(null)}
+      />
 
       <ConfirmDialog
         open={!!confirmDeleteTaskId}

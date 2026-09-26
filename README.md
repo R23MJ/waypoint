@@ -144,3 +144,55 @@ Recognized shorthand pre-fills the due date / priority / context / repeat
 fields (shown as chips above them) but never overwrites a field you've
 already set by hand. It's wired into both "Add a step" and the Inbox's
 "Do it — make it a next action" flow. See `lib/nlParse.ts`.
+
+## Trackables (daily habits & running totals)
+
+A project (e.g. "Powerlifting") can now hold **Trackables** — a "Today" section
+above its Next Steps:
+
+- **Yes/no** (e.g. "Took Creatine") — a daily checkbox that resets each day.
+- **Running total** (e.g. "Calories", target 4000 kcal) — a progress bar you
+  top up throughout the day with a small "+ add" field; supports subtracting
+  too, for corrections.
+
+Data model: `Trackable` (the definition — name, type, target, unit) and
+`TrackableEntry` (one row per trackable per calendar date, keyed by local
+`YYYY-MM-DD`) in `lib/types.ts`, with actions in `lib/store.ts`
+(`addTrackable`, `setTrackableToday`, `addTrackableAmount`, ...). The home
+dashboard also rolls up all trackables from active projects into a "Today"
+section, so daily check-ins don't require opening each project.
+
+Not yet built: streaks / history charts, weekly (vs. daily) reset periods,
+and quick-add preset amounts (e.g. "+250 kcal" buttons) — all reasonable
+next steps if this gets used.
+
+## Mobile keyboard covering sheet buttons — fixed
+
+Bottom sheets (quick capture, edit, confirm dialogs) were rendered as
+`fixed inset-0`, which sizes to the full layout viewport — on mobile, that
+doesn't shrink when the on-screen keyboard opens, so a sheet's buttons could
+end up hidden behind the keyboard. Two-part fix in `components/Sheet.tsx`:
+
+1. `viewport.interactiveWidget = "resizes-content"` in `app/layout.tsx`
+   (handles it natively on modern Chrome/Android — Next.js 16 supports this
+   viewport meta field directly).
+2. `components/ViewportFix.tsx` — a fallback using the `VisualViewport` API
+   for browsers that don't honor (1), notably iOS Safari.
+
+## Swipe-to-delete rendering bug — fixed
+
+Two compounding bugs: the task card had its own `rounded-2xl` *inside* the
+swipe container's `rounded-2xl`, so the corner-radius mismatch let the red
+delete panel peek through at the edges; and dimmed cards (done/blocked/
+waiting) used CSS `opacity` on the whole card, which makes the background
+semi-transparent too — letting the delete panel ghost through even when
+closed. Fixed in `components/TaskItem.tsx` by letting the swipe container
+own all rounding/clipping, and moving the dimmed look to an inner content
+wrapper so the card's background stays fully opaque underneath it.
+
+## Task editing
+
+Every step now has a pencil icon opening an edit sheet (title, priority,
+context, due date, defer date, dependencies, recurrence) —
+`components/EditTaskSheet.tsx`. Previously the only way to touch a step
+after creating it was to delete and re-add it.

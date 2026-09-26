@@ -3,8 +3,11 @@
 import { useRef, useState } from "react";
 import { useAppStore } from "@/lib/store";
 import { useThemeStore, ThemeMode } from "@/lib/theme-store";
-import { X, Sun, Moon, Monitor } from "lucide-react";
+import { X, Sun, Moon, Monitor, Coffee } from "lucide-react";
 import ConfirmDialog from "@/components/ConfirmDialog";
+
+// TODO: swap in your real Buy Me a Coffee page before shipping.
+const BUY_ME_A_COFFEE_URL = "https://www.buymeacoffee.com/waypoint";
 
 export default function SettingsPage() {
   const contexts = useAppStore((s) => s.contexts);
@@ -34,6 +37,8 @@ export default function SettingsPage() {
       contexts: state.contexts,
       inbox: state.inbox,
       somedayIdeas: state.somedayIdeas,
+      trackables: state.trackables,
+      trackableEntries: state.trackableEntries,
       lastReviewedAt: state.lastReviewedAt,
       notificationsEnabled: state.notificationsEnabled,
       lastNotifiedDate: state.lastNotifiedDate,
@@ -222,6 +227,18 @@ export default function SettingsPage() {
           Clear all data
         </button>
       </SettingsSection>
+
+      <section className="pt-2">
+        <a
+          href={BUY_ME_A_COFFEE_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1.5 text-[12px] text-text-faint hover:text-amber transition-colors"
+        >
+          <Coffee size={13} />
+          Buy me a coffee
+        </a>
+      </section>
 
       <ConfirmDialog
         open={confirmClear}

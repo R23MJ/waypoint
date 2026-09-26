@@ -69,6 +69,29 @@ export interface InboxItem {
   createdAt: number;
 }
 
+export type TrackableType = "boolean" | "counter";
+
+export interface Trackable {
+  id: string;
+  projectId: string;
+  name: string; // "Took Creatine", "Calories"
+  type: TrackableType;
+  target: number | null; // counter only, e.g. 4000
+  unit: string; // "kcal", "g", "" for boolean
+  order: number;
+  createdAt: number;
+}
+
+/** One trackable's tally for one calendar day (local date, ISO). For a
+ * counter this is the running total added so far that day; for a boolean
+ * it's 0 or 1. */
+export interface TrackableEntry {
+  id: string;
+  trackableId: string;
+  date: string;
+  value: number;
+}
+
 export interface SomedayIdea {
   id: string;
   text: string;
@@ -82,6 +105,8 @@ export interface AppState {
   contexts: Context[];
   inbox: InboxItem[];
   somedayIdeas: SomedayIdea[];
+  trackables: Trackable[];
+  trackableEntries: TrackableEntry[];
   lastReviewedAt: number | null;
   notificationsEnabled: boolean;
   lastNotifiedDate: string | null; // ISO date, so we notify at most once/day

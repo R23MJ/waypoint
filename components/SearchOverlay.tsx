@@ -46,7 +46,7 @@ export default function SearchOverlay({
   ].filter((a) => a.label.toLowerCase().includes(q.trim().toLowerCase()));
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-[2px] z-50 flex items-start justify-center p-4 pt-[10vh] animate-fade-in" onClick={onClose}>
+    <div className="fixed left-0 right-0 bg-black/50 backdrop-blur-[2px] z-50 flex items-start justify-center p-4 pt-[10vh] animate-fade-in" style={{ top: "var(--vv-top, 0px)", height: "var(--vv-height, 100dvh)" }} onClick={onClose}>
       <div
         className="bg-surface border border-border rounded-2xl w-full max-w-lg max-h-[70vh] flex flex-col overflow-hidden shadow-lg animate-pop-in"
         onClick={(e) => e.stopPropagation()}

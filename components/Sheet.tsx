@@ -30,12 +30,13 @@ export default function Sheet({
 
   return (
     <div
-      className="fixed inset-0 bg-black/50 backdrop-blur-[2px] z-50 flex items-end sm:items-center justify-center animate-fade-in"
+      className="fixed left-0 right-0 bg-black/50 backdrop-blur-[2px] z-50 flex items-end sm:items-center justify-center animate-fade-in"
+      style={{ top: "var(--vv-top, 0px)", height: "var(--vv-height, 100dvh)" }}
       onClick={onClose}
     >
       <div
         data-surface
-        className={`bg-surface border border-border-soft w-full ${maxWidth} sm:rounded-2xl rounded-t-2xl shadow-lg p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))] sm:pb-5 animate-sheet-up sm:animate-pop-in`}
+        className={`bg-surface border border-border-soft w-full ${maxWidth} sm:rounded-2xl rounded-t-2xl shadow-lg p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))] sm:pb-5 animate-sheet-up sm:animate-pop-in max-h-full overflow-y-auto`}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="sm:hidden w-9 h-1 rounded-full bg-border mx-auto -mt-1.5 mb-3.5" />
